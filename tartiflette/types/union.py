@@ -44,6 +44,10 @@ class GraphQLUnionType(GraphQLType):
     def is_union(self) -> bool:
         return True
 
+    def is_possible_type(self, gql_type: "GraphQLType"):
+        # TODO: check if the implementation is correct.
+        return gql_type.name in self.gql_types
+
     # Introspection Attribute
     @property
     def possibleTypes(  # pylint: disable=invalid-name

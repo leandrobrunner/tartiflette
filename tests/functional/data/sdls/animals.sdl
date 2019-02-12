@@ -47,6 +47,8 @@ type Query {
   dog: Dog
   cat: Cat
   human(id: Int!) : Human
+  humans(ids: [Int!]!): [Human!]
+  catOrDog: CatOrDog
 }
 
 type Mutation {

@@ -51,6 +51,10 @@ class GraphQLInterfaceType(GraphQLType):
             pass
         return []
 
+    def is_possible_type(self, gql_type: "GraphQLType"):
+        # TODO: check if the implementation is correct.
+        return gql_type.name in self._possible_types
+
     def bake(
         self,
         schema: "GraphQLSchema",

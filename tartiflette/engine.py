@@ -1,11 +1,16 @@
+import json
+
+from functools import lru_cache
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from tartiflette.executors.basic import execute as basic_execute
+from tartiflette.execution.execute import execute_operation
+from tartiflette.execution.execution_context import build_execution_context
+from tartiflette.json_parsing.parser import parse_document
 from tartiflette.parser import TartifletteRequestParser
 from tartiflette.resolver.factory import default_error_coercer
 from tartiflette.schema.bakery import SchemaBakery
 from tartiflette.schema.registry import SchemaRegistry
-from tartiflette.types.exceptions.tartiflette import GraphQLError
+from tartiflette.validations.validation_context import ValidationContext
 
 
 class Engine:
@@ -30,38 +35,48 @@ class Engine:
         self,
         query: str,
         operation_name: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
-        variables: Optional[Dict[str, Any]] = None,
-        initial_value: Optional[Any] = None,
+        context_value: Optional[Dict[str, Any]] = None,
+        variable_values: Optional[Dict[str, Any]] = None,
+        root_value: Optional[Any] = None,
     ) -> dict:
         """
         Parse and execute a GraphQL request (as string).
         :param query: the GraphQL request / query as UTF8-encoded string
         :param operation_name: the operation name to execute
-        :param context: a dict containing anything you need
-        :param variables: the variables used in the GraphQL request
-        :param initial_value: an initial value corresponding to the root type being executed
+        :param context_value: a dict containing anything you need
+        :param variable_values: the variables used in the GraphQL request
+        :param root_value: an initial value corresponding to the root type being executed
         :return: a GraphQL response (as dict)
         """
-        try:
-            operations, errors = self._parser.parse_and_tartify(
-                self._schema, query, variables=variables
-            )
-        except GraphQLError as e:
-            errors = [e]
-        except Exception:  # pylint: disable=broad-except
-            errors = [GraphQLError("Server encountered an error.")]
 
-        if errors:
-            return {
-                "data": None,
-                "errors": [self._error_coercer(err) for err in errors],
-            }
+        # Parse query to DocumentNode
+        document: "DocumentNode" = self._query_to_ast_document(query)
 
-        return await basic_execute(
-            operations,
+        # Validate DocumentNode
+        validation_context = ValidationContext()
+        # TODO: apply all validation rules on document
+        if validation_context.errors:
+            return validation_context.error_as_graphql_response()
+
+        # Execute query
+        execution_context: "ExecutionContext" = build_execution_context(
+            self._schema,
+            document,
+            validation_context,
             operation_name,
-            request_ctx=context,
-            initial_value=initial_value,
-            error_coercer=self._error_coercer,
+            context_value,
+            variable_values,
+            root_value,
+        )
+
+        if validation_context.errors:
+            return validation_context.error_as_graphql_response()
+
+        # Execute operation
+        return await execute_operation(execution_context, self._error_coercer)
+
+    @lru_cache(1000)
+    def _query_to_ast_document(self, query: str) -> "DocumentNode":
+        return parse_document(
+            json.loads(self._parser.parse_and_jsonify(query))
         )
