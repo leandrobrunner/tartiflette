@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from tartiflette.types.helpers import (
     get_directive_instances,
@@ -28,6 +28,7 @@ class GraphQLUnionType(GraphQLType):
         super().__init__(name=name, description=description, schema=schema)
         self.gql_types = gql_types
         self._possible_types = []
+        self._possible_types_set: Set[str] = set()
         self._directives = directives
 
     def __repr__(self) -> str:
@@ -40,6 +41,16 @@ class GraphQLUnionType(GraphQLType):
 
     def __eq__(self, other: Any) -> bool:
         return super().__eq__(other) and self.gql_types == other.gql_types
+
+    def is_possible_types(self, gql_type: "GraphQLType") -> bool:
+        """
+        Determines if a GraphQLType is a possible types for the union.
+        :param gql_type: the GraphQLType to check
+        :type gql_type: GraphQLType
+        :return: whether or not the GraphQLType is a possible type
+        :rtype: bool
+        """
+        return gql_type.name in self._possible_types_set
 
     # Introspection Attribute
     @property
@@ -60,9 +71,10 @@ class GraphQLUnionType(GraphQLType):
     def bake(self, schema: "GraphQLSchema") -> None:
         super().bake(schema)
 
-        self._possible_types = [
-            self._schema.find_type(x) for x in self.gql_types
-        ]
+        for gql_type_name in self.gql_types:
+            schema_type = schema.find_type(gql_type_name)
+            self._possible_types.append(schema_type)
+            self._possible_types_set.add(gql_type_name)
 
         self._introspection_directives = wraps_with_directives(
             directives_definition=get_directive_instances(

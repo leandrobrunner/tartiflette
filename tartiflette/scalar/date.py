@@ -1,4 +1,8 @@
 from datetime import datetime
+from typing import Union
+
+from tartiflette.constants import UNDEFINED_VALUE
+from tartiflette.language.ast import StringValueNode
 
 
 class ScalarDate:
@@ -9,3 +13,14 @@ class ScalarDate:
     @staticmethod
     def coerce_input(val: str) -> datetime:
         return datetime.strptime(val, "%Y-%m-%d")
+
+    @staticmethod
+    def parse_literal(ast: "Node") -> Union[datetime, "UNDEFINED_VALUE"]:
+        if not isinstance(ast, StringValueNode):
+            return UNDEFINED_VALUE
+
+        try:
+            return datetime.strptime(ast.value, "%Y-%m-%d")
+        except Exception:
+            pass
+        return UNDEFINED_VALUE

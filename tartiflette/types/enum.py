@@ -121,6 +121,16 @@ class GraphQLEnumType(GraphQLType):
     def __eq__(self, other: Any) -> bool:
         return super().__eq__(other) and self.values == other.values
 
+    def get_value(self, name: str) -> str:
+        """
+        TODO:
+        :param name: TODO:
+        :type name: TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return self._value_map[name].value
+
     # Introspection Attribute
     @property
     def kind(self) -> str:

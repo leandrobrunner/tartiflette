@@ -29,6 +29,7 @@ class GraphQLScalarType(GraphQLType):
         super().__init__(name=name, description=description, schema=schema)
         self.coerce_output = None
         self.coerce_input = None
+        self.parse_literal = None
         self._directives = directives
         self._directives_implementations = {}
 
@@ -43,6 +44,7 @@ class GraphQLScalarType(GraphQLType):
             super().__eq__(other)
             and self.coerce_output == other.coerce_output
             and self.coerce_input == other.coerce_input
+            and self.parse_literal == other.parse_literal
         )
 
     # Introspection Attribute

@@ -14,6 +14,35 @@ class OnBuildDirective:
         """
 
 
+class OnCollectionDirective:
+    """
+    Base directive class for `on_***_collection` hooks. Available hooks for
+    the moment are:
+    * on_field_collection
+    * on_fragment_spread_collection
+    * on_inline_fragment_collection
+    """
+
+    @staticmethod
+    async def on_field_collection(directive_args, next_resolver, selection):
+        # pylint: disable=unused-argument
+        return await next_resolver(selection)
+
+    @staticmethod
+    async def on_fragment_spread_collection(
+        directive_args, next_resolver, selection
+    ):
+        # pylint: disable=unused-argument
+        return await next_resolver(selection)
+
+    @staticmethod
+    async def on_inline_fragment_collection(
+        directive_args, next_resolver, selection
+    ):
+        # pylint: disable=unused-argument
+        return await next_resolver(selection)
+
+
 class OnExecutionDirective:
     """
     Base directive class for `on_***_execution` hooks. Available hooks for
@@ -142,7 +171,10 @@ class OnIntrospectionDirective:
 
 
 class CommonDirective(
-    OnBuildDirective, OnExecutionDirective, OnIntrospectionDirective
+    OnBuildDirective,
+    OnCollectionDirective,
+    OnExecutionDirective,
+    OnIntrospectionDirective,
 ):
     """
     Base directive class implementing all defaults hooks behavior.

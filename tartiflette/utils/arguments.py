@@ -2,12 +2,11 @@ import asyncio
 
 from typing import Any, Dict, Optional
 
+from tartiflette.constants import UNDEFINED_VALUE
 from tartiflette.types.exceptions.tartiflette import MultipleException
 from tartiflette.types.helpers import reduce_type
 from tartiflette.types.input_object import GraphQLInputObjectType
 from tartiflette.utils.errors import to_graphql_error
-
-UNDEFINED_VALUE = object()
 
 
 async def argument_coercer(
@@ -19,22 +18,22 @@ async def argument_coercer(
     except KeyError:
         pass
 
-    if value is UNDEFINED_VALUE and argument_definition.default_value:
-        value = argument_definition.default_value
+    # if value is UNDEFINED_VALUE and argument_definition.default_value:
+    #     value = argument_definition.default_value
 
     if value is UNDEFINED_VALUE:
         return value
 
-    try:
-        value = (
-            value.value
-            if not input_coercer
-            else await input_coercer(
-                value.value, argument_definition, ctx, info
-            )
-        )
-    except AttributeError:
-        pass
+    # try:
+    #     value = (
+    #         value.value
+    #         if not input_coercer
+    #         else await input_coercer(
+    #             value.value, argument_definition, ctx, info
+    #         )
+    #     )
+    # except AttributeError:
+    #     pass
 
     if value is None:
         return None
@@ -65,13 +64,13 @@ async def argument_coercer(
 
 async def coerce_arguments(
     argument_definitions: Dict[str, "GraphQLArgument"],
-    input_args: Dict[str, Any],
+    values: Dict[str, Any],
     ctx: Optional[Dict[str, Any]],
     info: "Info",
 ) -> Dict[str, Any]:
     results = await asyncio.gather(
         *[
-            argument_definition.coercer(input_args, ctx, info)
+            argument_definition.coercer(values, ctx, info)
             for argument_definition in argument_definitions.values()
         ],
         return_exceptions=True,

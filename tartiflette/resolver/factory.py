@@ -60,15 +60,40 @@ class _ResolverExecutor:
 
     async def __call__(
         self,
+        execution_context: "ExecutionContext",
         parent_result: Optional[Any],
-        args: Dict[str, Any],
+        # args: Dict[str, Any],
         ctx: Optional[Dict[str, Any]],
         info: "Info",
         execution_directives: Optional[List[Dict[str, Any]]],
+        field_nodes: List["FieldNode"],
     ) -> (Any, Any):
+        from tartiflette.execution.values import get_argument_values
+
         try:
+            computed_directives = []
+            try:
+                for directive_node in execution_directives:
+                    directive_name = directive_node.name.value
+                    directive = execution_context.schema.find_directive(
+                        directive_name
+                    )
+
+                    computed_directives.append(
+                        {
+                            "callables": directive.implementation,
+                            "args": get_argument_values(
+                                directive.arguments,
+                                directive_node,
+                                execution_context.variable_values,
+                            ),
+                        }
+                    )
+            except Exception:
+                pass
+
             resolver = wraps_with_directives(
-                directives_definition=execution_directives,
+                directives_definition=computed_directives,
                 directive_hook="on_field_execution",
                 func=self._directivated_func,
             )
@@ -76,7 +101,14 @@ class _ResolverExecutor:
             result = await resolver(
                 parent_result,
                 await coerce_arguments(
-                    self._schema_field.arguments, args, ctx, info
+                    self._schema_field.arguments,
+                    get_argument_values(
+                        self.schema_field.arguments,
+                        field_nodes[0],
+                        execution_context.variable_values,
+                    ),
+                    ctx,
+                    info,
                 ),
                 ctx,
                 info,
@@ -179,7 +211,7 @@ def default_error_coercer(exception: Exception, error: dict) -> dict:
     return error
 
 
-def error_coercer_factory(error_coercer: Callable) -> dict:
+def error_coercer_factory(error_coercer: Callable) -> Callable:
     def func_wrapper(exception: Exception) -> dict:
         error = exception.coerce_value()
         return error_coercer(exception, error)

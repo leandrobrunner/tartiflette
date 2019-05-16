@@ -17,12 +17,18 @@ class TartifletteError(Exception):
     ) -> None:
         super().__init__(message)
         self.message = message  # Developer message by default
-        self.user_message = user_message or message
+        self.user_message = user_message
         self.more_info = more_info
         self.path = path or None
         self.locations = locations or []
         self.extensions = extensions or {}
         self.original_error = original_error
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(message=%r, locations=%r)" % (
+            self.user_message or self.message,
+            self.locations,
+        )
 
     def coerce_value(
         self,
@@ -40,9 +46,7 @@ class TartifletteError(Exception):
             pass
 
         errors = {
-            "message": self.user_message
-            if self.user_message
-            else self.message,
+            "message": self.user_message or self.message,
             "path": path or self.path,
             "locations": computed_locations,
         }
@@ -226,4 +230,8 @@ class UnknownGraphQLType(GraphQLError):
 
 
 class SkipExecution(Exception):
+    pass
+
+
+class SkipCollection(Exception):
     pass

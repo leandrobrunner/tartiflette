@@ -1,6 +1,10 @@
+from typing import Union
+
 import pytest
 
 from tartiflette import Engine, Resolver
+from tartiflette.constants import UNDEFINED_VALUE
+from tartiflette.language.ast import StringValueNode
 from tartiflette.scalar.custom_scalar import Scalar
 
 _SDL = """
@@ -42,6 +46,14 @@ class CapitalizedString:
     @staticmethod
     def coerce_input(val: str) -> str:
         return val.capitalize()
+
+    @staticmethod
+    def parse_literal(ast: "Node") -> Union[str, "UNDEFINED_VALUE"]:
+        return (
+            ast.value.capitalize()
+            if isinstance(ast, StringValueNode)
+            else UNDEFINED_VALUE
+        )
 
 
 @Resolver("Query.person", schema_name="test_issue185")

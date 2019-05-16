@@ -71,6 +71,14 @@ class GraphQLArgument:
     def schema(self) -> "GraphQLSchema":
         return self._schema
 
+    @property
+    def graphql_type(self) -> "GraphQLType":
+        return (
+            self.gql_type
+            if isinstance(self.gql_type, GraphQLType)
+            else self.schema.find_type(self.gql_type)
+        )
+
     # Introspection Attribute
     @property
     def type(self) -> dict:
@@ -123,6 +131,18 @@ class GraphQLArgument:
                 ),
             ),
             self,
+        )
+
+    def get_gql_type(self) -> "GraphQLType":
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return (
+            self.gql_type
+            if isinstance(self.gql_type, GraphQLType)
+            else self._schema.find_type(self.gql_type)
         )
 
     @property

@@ -19,6 +19,19 @@ class GraphQLType:
         self._schema = schema
         self._introspection_directives = None
 
+    def __eq__(self, other: Any) -> bool:
+        return self is other or (
+            type(self) is type(other) and self.name == other.name
+        )
+
+    def __repr__(self) -> str:
+        return "{}(name={!r}, description={!r})".format(
+            self.__class__.__name__, self.name, self.description
+        )
+
+    def __str__(self) -> str:
+        return "{!s}".format(self.name)
+
     @property
     def is_list(self) -> bool:
         return self._is_list
@@ -36,47 +49,29 @@ class GraphQLType:
         return False
 
     @property
-    def is_shell(self) -> bool:
-        return self.is_list or self.is_not_null
-
-    @property
     def contains_not_null(self) -> bool:
         return False
-
-    # Introspection Attribute
-    @property
-    def ofType(self) -> None:  # pylint: disable=invalid-name
-        return None
-
-    # Introspection Attribute
-    @property
-    def kind(self) -> str:
-        return "TYPE"
-
-    def __repr__(self) -> str:
-        return "{}(name={!r}, description={!r})".format(
-            self.__class__.__name__, self.name, self.description
-        )
-
-    def __str__(self) -> str:
-        return "{!s}".format(self.name)
-
-    def __eq__(self, other: Any) -> bool:
-        return self is other or (
-            type(self) is type(other) and self.name == other.name
-        )
-
-    @property
-    def schema(self) -> Optional["GraphQLSchema"]:
-        return self._schema
-
-    def bake(self, schema: "GraphQLSchema") -> None:
-        self._schema = schema
 
     @property
     def contains_a_list(self) -> bool:
         return False
 
     @property
+    def schema(self) -> Optional["GraphQLSchema"]:
+        return self._schema
+
+    @property
     def introspection_directives(self):
         return self._introspection_directives
+
+    def bake(self, schema: "GraphQLSchema") -> None:
+        self._schema = schema
+
+    # Introspection attributes
+    @property
+    def ofType(self) -> None:  # pylint: disable=invalid-name
+        return None
+
+    @property
+    def kind(self) -> str:
+        return "TYPE"

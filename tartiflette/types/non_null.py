@@ -36,18 +36,6 @@ class GraphQLNonNull(GraphQLType):
     def contains_not_null(self) -> bool:
         return True
 
-    # Introspection Attribute
-    @property
-    def ofType(self) -> Union[str, GraphQLType]:
-        if isinstance(self.gql_type, GraphQLType):
-            return self.gql_type
-        return self.schema.find_type(self.gql_type)
-
-    # Introspection Attribute
-    @property
-    def kind(self) -> str:
-        return "NON_NULL"
-
     @property
     def contains_a_list(self) -> bool:
         try:
@@ -55,3 +43,20 @@ class GraphQLNonNull(GraphQLType):
         except AttributeError:
             pass
         return False
+
+    @property
+    def wrapped_type(self) -> "GraphQLType":
+        return (
+            self.gql_type
+            if isinstance(self.gql_type, GraphQLType)
+            else self.schema.find_type(self.gql_type)
+        )
+
+    # Introspection attributes
+    @property
+    def ofType(self) -> "GraphQLType":
+        return self.wrapped_type
+
+    @property
+    def kind(self) -> str:
+        return "NON_NULL"

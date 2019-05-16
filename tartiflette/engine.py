@@ -1,10 +1,10 @@
+from functools import partial
 from importlib import import_module, invalidate_caches
 from typing import Any, AsyncIterable, Callable, Dict, List, Optional, Union
 
-from tartiflette.executors.basic import (
-    execute as basic_execute,
-    subscribe as basic_subscribe,
-)
+from tartiflette.execution.collect import parse_and_validate_query
+from tartiflette.execution.context import build_execution_context
+from tartiflette.execution.response import build_response
 from tartiflette.parser import TartifletteRequestParser
 from tartiflette.resolver.factory import (
     default_error_coercer,
@@ -12,8 +12,6 @@ from tartiflette.resolver.factory import (
 )
 from tartiflette.schema.bakery import SchemaBakery
 from tartiflette.schema.registry import SchemaRegistry
-from tartiflette.types.exceptions.tartiflette import GraphQLError
-from tartiflette.utils.errors import to_graphql_error
 
 
 def _import_modules(modules):
@@ -33,32 +31,32 @@ class Engine:
         exclude_builtins_scalars: Optional[List[str]] = None,
         modules: Optional[Union[str, List[str]]] = None,
     ) -> None:
-        """Create an engine by analyzing the SDL and connecting it with the imported Resolver, Mutation,
-        Subscription, Directive and Scalar linking them through the schema_name.
-
-        Then using `await an_engine.execute(query)` will resolve your GQL requests.
-
-        Arguments:
-            sdl {Union[str, List[str]]} -- The SDL to work with.
-
-        Keyword Arguments:
-            schema_name {str} -- The name of the SDL (default: {"default"})
-            error_coercer {Callable[[Exception, dict], dict]} -- An optional callable in charge of transforming a couple Exception/error into an error dict (default: {default_error_coercer})
-            custom_default_resolver {Optional[Callable]} -- An optional callable that will replace the tartiflette default_resolver (Will be called like a resolver for each UNDECORATED field) (default: {None})
-            exclude_builtins_scalars {Optional[List[str]]} -- An optional list of string containing the names of the builtin scalar you don't want to be automatically included, usually it's Date, DateTime or Time scalars (default: {None})
-            modules {Optional[Union[str, List[str]]]} -- An optional list of string containing the name of the modules you want the engine to import, usually this modules contains your Resolvers, Directives, Scalar or Subscription code (default: {None})
         """
-
+        TODO:
+        :param sdl: TODO:
+        :param schema_name: TODO:
+        :param error_coercer: TODO:
+        :param custom_default_resolver: TODO:
+        :param exclude_builtins_scalars: TODO:
+        :param modules: TODO:
+        :type sdl: TODO:
+        :type schema_name: TODO:
+        :type error_coercer: TODO:
+        :type custom_default_resolver: TODO:
+        :type exclude_builtins_scalars: TODO:
+        :type modules: TODO:
+        """
         if isinstance(modules, str):
             modules = [modules]
 
         self._modules = _import_modules(modules)
-
-        self._error_coercer = error_coercer_factory(error_coercer)
         self._parser = TartifletteRequestParser()
         SchemaRegistry.register_sdl(schema_name, sdl, exclude_builtins_scalars)
         self._schema = SchemaBakery.bake(
             schema_name, custom_default_resolver, exclude_builtins_scalars
+        )
+        self._build_response = partial(
+            build_response, error_coercer=error_coercer_factory(error_coercer)
         )
 
     async def execute(
@@ -68,27 +66,40 @@ class Engine:
         context: Optional[Dict[str, Any]] = None,
         variables: Optional[Dict[str, Any]] = None,
         initial_value: Optional[Any] = None,
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """
-        Parse and execute a GraphQL request (as string).
-        :param query: the GraphQL request / query as UTF8-encoded string
-        :param operation_name: the operation name to execute
-        :param context: a dict containing anything you need
-        :param variables: the variables used in the GraphQL request
-        :param initial_value: an initial value corresponding to the root type being executed
-        :return: a GraphQL response (as dict)
+        TODO:
+        :param query: TODO:
+        :param operation_name: TODO:
+        :param context: TODO:
+        :param variables: TODO:
+        :param initial_value: TODO:
+        :type query: TODO:
+        :type operation_name: TODO:
+        :type context: TODO:
+        :type variables: TODO:
+        :type initial_value: TODO:
+        :return: TODO:
+        :rtype: TODO:
         """
-        operations, errors = self._parse_query_to_operations(query, variables)
-
+        document, errors = parse_and_validate_query(query)
         if errors:
-            return errors
+            return self._build_response(errors=errors)
 
-        return await basic_execute(
-            operations,
+        execution_context, errors = build_execution_context(
+            self._schema,
+            document,
+            initial_value,
+            context,
+            variables,
             operation_name,
-            request_ctx=context,
-            initial_value=initial_value,
-            error_coercer=self._error_coercer,
+            self._build_response,
+        )
+
+        return (
+            self._build_response(errors=errors)
+            if errors
+            else await execution_context.execute()
         )
 
     async def subscribe(
@@ -100,48 +111,37 @@ class Engine:
         initial_value: Optional[Any] = None,
     ) -> AsyncIterable[Dict[str, Any]]:
         """
-        Parse and execute a GraphQL request (as string).
-        :param query: the GraphQL request / query as UTF8-encoded string
-        :param operation_name: the operation name to execute
-        :param context: a dict containing anything you need
-        :param variables: the variables used in the GraphQL request
-        :param initial_value: an initial value corresponding to the root type being executed
-        :return: a GraphQL response (as dict)
+        TODO:
+        :param query: TODO:
+        :param operation_name: TODO:
+        :param context: TODO:
+        :param variables: TODO:
+        :param initial_value: TODO:
+        :type query: TODO:
+        :type operation_name: TODO:
+        :type context: TODO:
+        :type variables: TODO:
+        :type initial_value: TODO:
+        :return: TODO:
+        :rtype: TODO:
         """
-        operations, errors = self._parse_query_to_operations(query, variables)
-
+        document, errors = parse_and_validate_query(query)
         if errors:
-            yield errors
-        else:
-            async for result in basic_subscribe(  # pylint: disable=not-an-iterable
-                operations,
-                operation_name,
-                request_ctx=context,
-                initial_value=initial_value,
-                error_coercer=self._error_coercer,
-            ):
-                yield result
+            yield self._build_response(errors=errors)
+            return
 
-    def _parse_query_to_operations(self, query, variables):
-        try:
-            operations, errors = self._parser.parse_and_tartify(
-                self._schema,
-                query,
-                variables=dict(variables) if variables else variables,
-            )
-        except GraphQLError as e:
-            errors = [e]
-        except Exception as e:  # pylint: disable=broad-except
-            errors = [
-                to_graphql_error(e, message="Server encountered an error.")
-            ]
-
+        execution_context, errors = build_execution_context(
+            self._schema,
+            document,
+            initial_value,
+            context,
+            variables,
+            operation_name,
+            self._build_response,
+        )
         if errors:
-            return (
-                None,
-                {
-                    "data": None,
-                    "errors": [self._error_coercer(err) for err in errors],
-                },
-            )
-        return operations, None
+            yield self._build_response(errors=errors)
+            return
+
+        async for result in execution_context.subscribe():
+            yield result
