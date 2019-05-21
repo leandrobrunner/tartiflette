@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from tartiflette.constants import UNDEFINED_VALUE
 from tartiflette.language.ast import NullValueNode, VariableNode
@@ -7,13 +7,12 @@ from tartiflette.types.helpers.definition import (
     is_input_type,
     is_non_null_type,
 )
-from tartiflette.utils.coerce_value import coerce_value
+from tartiflette.utils.coerce_value import CoercionResult
 from tartiflette.utils.errors import graphql_error_from_nodes
-from tartiflette.utils.type_from_ast import schema_type_from_ast
 from tartiflette.utils.value_from_ast import value_from_ast
 from tartiflette.utils.values import is_invalid_value
 
-__all__ = ["get_argument_values", "get_variable_values"]
+__all__ = ["get_argument_values", "coerce_variable_definitions"]
 
 
 def get_argument_values(
@@ -102,49 +101,48 @@ def get_argument_values(
     return coerced_values
 
 
-def get_variable_values(
-    schema: "GraphQLSchema",
-    variable_definitions: List["VariableDefinitionNode"],
+def variable_definition_coercer(
+    executable_variable_definition: "ExecutableVariableDefinition",
     raw_variable_values: Dict[str, Any],
-) -> Tuple[Dict[str, Any], List["GraphQLError"]]:
+    input_coercer: Optional[Callable],
+) -> Union["CoercionResult", "UNDEFINED_VALUE"]:
     """
     TODO:
-    :param schema: TODO:
-    :param variable_definitions: TODO:
+    :param executable_variable_definition: TODO:
     :param raw_variable_values: TODO:
-    :type schema: TODO:
-    :type variable_definitions: TODO:
+    :param input_coercer: TODO:
+    :type executable_variable_definition: TODO:
     :type raw_variable_values: TODO:
+    :type input_coercer: TODO:
     :return: TODO:
     :rtype: TODO:
     """
-    errors: List["GraphQLError"] = []
-    coerced_values: Dict[str, Any] = {}
+    var_name = executable_variable_definition.name
+    var_type = executable_variable_definition.graphql_type
 
-    for variable_definition in variable_definitions:
-        var_name = variable_definition.variable.name.value
-        var_type = schema_type_from_ast(schema, variable_definition.type)
-
-        if not is_input_type(var_type):
-            errors.append(
+    if not is_input_type(var_type):
+        definition_type = executable_variable_definition.definition.type
+        return CoercionResult(
+            errors=[
                 graphql_error_from_nodes(
                     f"Variable < ${var_name} > expected value of type "
-                    f"< {variable_definition.type} > which cannot be used as "
+                    f"< {definition_type} > which cannot be used as "
                     "an input type.",
-                    nodes=variable_definition.type,
+                    nodes=definition_type,
                 )
-            )
-            continue
+            ]
+        )
 
-        has_value = var_name in raw_variable_values
-        value = raw_variable_values[var_name] if has_value else UNDEFINED_VALUE
+    has_value = var_name in raw_variable_values
+    value = raw_variable_values.get(var_name, UNDEFINED_VALUE)
+    default_value = executable_variable_definition.default_value
 
-        if not has_value and variable_definition.default_value:
-            coerced_values[var_name] = value_from_ast(
-                variable_definition.default_value, var_type
-            )
-        elif (not has_value or value is None) and is_non_null_type(var_type):
-            errors.append(
+    if not has_value and default_value is not UNDEFINED_VALUE:
+        return CoercionResult(value=default_value)
+
+    if (not has_value or value is None) and is_non_null_type(var_type):
+        return CoercionResult(
+            errors=[
                 graphql_error_from_nodes(
                     (
                         f"Variable < ${var_name} > of non-null type "
@@ -155,24 +153,51 @@ def get_variable_values(
                         f"Variable < ${var_name} > of required type "
                         f"< {var_type} > was not provided."
                     ),
-                    nodes=variable_definition,
+                    nodes=executable_variable_definition.definition,
                 )
-            )
-        elif has_value:
-            if value is None:
-                coerced_values[var_name] = None
-            else:
-                coerced_value, coerce_errors = coerce_value(
-                    value, var_type, variable_definition
-                )
-                if coerce_errors:
-                    for coerce_error in coerce_errors:
-                        coerce_error.message = (
-                            f"Variable < ${var_name} > got invalid value "
-                            f"< {value} >; {coerce_error.message}"
-                        )
-                    errors.extend(coerce_errors)
-                else:
-                    coerced_values[var_name] = coerced_value
+            ]
+        )
 
-    return coerced_values, errors
+    if has_value:
+        coerced_value, coerce_errors = input_coercer(value)
+        if coerce_errors:
+            for coerce_error in coerce_errors:
+                coerce_error.message = (
+                    f"Variable < ${var_name} > got invalid value "
+                    f"< {value} >; {coerce_error.message}"
+                )
+            return CoercionResult(errors=coerce_errors)
+        return CoercionResult(value=coerced_value)
+    return UNDEFINED_VALUE
+
+
+def coerce_variable_definitions(
+    executable_variable_definitions: List["ExecutableVariableDefinition"],
+    raw_variable_values: Dict[str, Any],
+) -> Tuple[Dict[str, Any], List["GraphQLError"]]:
+    """
+    TODO:
+    :param executable_variable_definitions: TODO:
+    :param raw_variable_values: TODO:
+    :type executable_variable_definitions: TODO:
+    :type raw_variable_values: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    coercion_errors: List["GraphQLError"] = []
+    coerced_values: Dict[str, Any] = {}
+
+    for executable_variable_definition in executable_variable_definitions:
+        coercion_result = executable_variable_definition.coercer(
+            raw_variable_values
+        )
+        if coercion_result is UNDEFINED_VALUE:
+            continue
+
+        value, errors = coercion_result
+        if errors:
+            coercion_errors.extend(errors)
+        else:
+            coerced_values[executable_variable_definition.name] = value
+
+    return coerced_values, coercion_errors

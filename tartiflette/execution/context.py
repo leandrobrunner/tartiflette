@@ -1,9 +1,11 @@
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-from tartiflette.execution.collect import collect_executables
-from tartiflette.execution.execute import execute_operation, run_subscription
-from tartiflette.execution.values import get_variable_values
+from tartiflette.execution.collect import (
+    collect_executable_variable_definitions,
+)
+from tartiflette.execution.execute import execute_operation
+from tartiflette.execution.values import coerce_variable_definitions
 from tartiflette.language.ast import (
     FragmentDefinitionNode,
     OperationDefinitionNode,
@@ -176,10 +178,12 @@ def build_execution_context(
 
     variable_values: Dict[str, Any] = {}
     if operation:
-        variable_values, variable_errors = get_variable_values(
-            schema,
-            operation.variable_definitions or [],
-            raw_variable_values or {},
+        executable_variable_definitions = collect_executable_variable_definitions(
+            schema, operation.variable_definitions or []
+        )
+
+        variable_values, variable_errors = coerce_variable_definitions(
+            executable_variable_definitions, raw_variable_values or {}
         )
 
         if variable_errors:

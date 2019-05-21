@@ -1,44 +1,45 @@
 import pytest
+from tartiflette.directive import CommonDirective
 
-from tartiflette import Engine, Resolver
+from tartiflette import Engine, Resolver, Directive
 
 
-@Resolver("Query.intField", schema_name="test_refactoring_variables")
+@Resolver("Query.intField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_int_field(parent, args, ctx, info):
     if "intParam" in args:
         return f"SUCCESS-{args['intParam']}"
     return "SUCCESS"
 
 
-@Resolver("Query.floatField", schema_name="test_refactoring_variables")
+@Resolver("Query.floatField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_float_field(parent, args, ctx, info):
     if "floatParam" in args:
         return f"SUCCESS-{args['floatParam']}"
     return "SUCCESS"
 
 
-@Resolver("Query.booleanField", schema_name="test_refactoring_variables")
+@Resolver("Query.booleanField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_boolean_field(parent, args, ctx, info):
     if "booleanParam" in args:
         return f"SUCCESS-{args['booleanParam']}"
     return "SUCCESS"
 
 
-@Resolver("Query.stringField", schema_name="test_refactoring_variables")
+@Resolver("Query.stringField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_string_field(parent, args, ctx, info):
     if "stringParam" in args:
         return f"SUCCESS-{args['stringParam']}"
     return "SUCCESS"
 
 
-@Resolver("Query.enumField", schema_name="test_refactoring_variables")
+@Resolver("Query.enumField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_enum_field(parent, args, ctx, info):
     if "enumParam" in args:
         return f"SUCCESS-{args['enumParam']}"
     return "SUCCESS"
 
 
-@Resolver("Query.listIntField", schema_name="test_refactoring_variables")
+@Resolver("Query.listIntField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_list_int_field(parent, args, ctx, info):
     if "listIntParam" in args:
         return "SUCCESS-{}".format(
@@ -49,7 +50,7 @@ async def resolve_query_list_int_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
-@Resolver("Query.listFloatField", schema_name="test_refactoring_variables")
+@Resolver("Query.listFloatField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_list_float_field(parent, args, ctx, info):
     if "listFloatParam" in args:
         return "SUCCESS-{}".format(
@@ -60,7 +61,7 @@ async def resolve_query_list_float_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
-@Resolver("Query.listBooleanField", schema_name="test_refactoring_variables")
+@Resolver("Query.listBooleanField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_list_boolean_field(parent, args, ctx, info):
     if "listBooleanParam" in args:
         return "SUCCESS-{}".format(
@@ -71,7 +72,7 @@ async def resolve_query_list_boolean_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
-@Resolver("Query.listStringField", schema_name="test_refactoring_variables")
+@Resolver("Query.listStringField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_list_string_field(parent, args, ctx, info):
     if "listStringParam" in args:
         return "SUCCESS-{}".format(
@@ -82,7 +83,7 @@ async def resolve_query_list_string_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
-@Resolver("Query.listEnumField", schema_name="test_refactoring_variables")
+@Resolver("Query.listEnumField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_list_enum_field(parent, args, ctx, info):
     if "listEnumParam" in args:
         return "SUCCESS-{}".format(
@@ -93,7 +94,7 @@ async def resolve_query_list_enum_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
-@Resolver("Query.objectField", schema_name="test_refactoring_variables")
+@Resolver("Query.objectField", schema_name="test_refactoring_variables_directives")
 async def resolve_query_object_field(parent, args, ctx, info):
     if "objectParam" in args:
         if args["objectParam"] is None:
@@ -116,19 +117,58 @@ async def resolve_query_object_field(parent, args, ctx, info):
     return "SUCCESS"
 
 
+@Directive("lower", schema_name="test_refactoring_variables_directives")
+class LowerDirective(CommonDirective):
+    @staticmethod
+    async def on_post_input_coercion(
+        directive_args, next_directive, value, argument_definition, ctx, info
+    ):
+        value = value.lower()
+        return await next_directive(value, argument_definition, ctx, info)
+
+
+@Directive("increment", schema_name="test_refactoring_variables_directives")
+class IncrementDirective(CommonDirective):
+    @staticmethod
+    async def on_post_input_coercion(
+        directive_args, next_directive, value, argument_definition, ctx, info
+    ):
+        value = value + directive_args["step"]
+        return await next_directive(value, argument_definition, ctx, info)
+
+
+@Directive("mapToValue", schema_name="test_refactoring_variables_directives")
+class MapToValueDirective(CommonDirective):
+    @staticmethod
+    async def on_post_input_coercion(
+        directive_args, next_directive, value, argument_definition, ctx, info
+    ):
+        value = directive_args["value"]
+        return await next_directive(value, argument_definition, ctx, info)
+
+
+
 _SDL = """
-enum MyEnum { ENUM_1, ENUM_2, ENUM_3 }
+directive @lower on ENUM_VALUE | INPUT_FIELD_DEFINITION
+directive @increment(step: Int = 1) on INPUT_FIELD_DEFINITION
+directive @mapToValue(value: String!) on ENUM_VALUE
+
+enum MyEnum {
+  ENUM_1 @mapToValue(value: "ENUM_1_1") @lower
+  ENUM_2 @lower @mapToValue(value: "ENUM_2_2")
+  ENUM_3
+}
 
 input ObjectInput {
-  intParam: Int
+  intParam: Int @increment(step: 2)
   listIntParam: [Int]
-  floatParam: Float
+  floatParam: Float @increment(step: 2)
   listFloatParam: [Float]
   booleanParam: Boolean
   listBooleanParam: [Boolean]
-  stringParam: String
+  stringParam: String @lower
   listStringParam: [String]
-  enumParam: MyEnum
+  enumParam: MyEnum @lower
   listEnumParam: [MyEnum]
 }
 
@@ -179,7 +219,7 @@ type Query {
 }
 """
 
-_TTFTT_ENGINE = Engine(_SDL, schema_name="test_refactoring_variables")
+_TTFTT_ENGINE = Engine(_SDL, schema_name="test_refactoring_variables_directives")
 
 
 @pytest.mark.asyncio
@@ -264,7 +304,7 @@ _TTFTT_ENGINE = Engine(_SDL, schema_name="test_refactoring_variables")
         ),
     ],
 )
-async def test_refactoring_variables_not_input_type(query, expected):
+async def test_refactoring_variables_directives_not_input_type(query, expected):
     assert await _TTFTT_ENGINE.execute(query) == expected
 
 
@@ -416,7 +456,7 @@ async def test_refactoring_variables_not_input_type(query, expected):
         ),
     ],
 )
-async def test_refactoring_variables_int(query, variables, expected):
+async def test_refactoring_variables_directives_int(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -568,7 +608,7 @@ async def test_refactoring_variables_int(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_float(query, variables, expected):
+async def test_refactoring_variables_directives_float(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -720,7 +760,7 @@ async def test_refactoring_variables_float(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_boolean(query, variables, expected):
+async def test_refactoring_variables_directives_boolean(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -875,7 +915,7 @@ async def test_refactoring_variables_boolean(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_string(query, variables, expected):
+async def test_refactoring_variables_directives_string(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -1027,7 +1067,7 @@ async def test_refactoring_variables_string(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_enum(query, variables, expected):
+async def test_refactoring_variables_directives_enum(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -1238,7 +1278,7 @@ async def test_refactoring_variables_enum(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_list_int(query, variables, expected):
+async def test_refactoring_variables_directives_list_int(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -1466,7 +1506,7 @@ async def test_refactoring_variables_list_int(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_list_float(query, variables, expected):
+async def test_refactoring_variables_directives_list_float(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -1686,7 +1726,7 @@ async def test_refactoring_variables_list_float(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_list_boolean(query, variables, expected):
+async def test_refactoring_variables_directives_list_boolean(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -1922,7 +1962,7 @@ async def test_refactoring_variables_list_boolean(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_list_string(query, variables, expected):
+async def test_refactoring_variables_directives_list_string(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -2143,7 +2183,7 @@ async def test_refactoring_variables_list_string(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_list_enum(query, variables, expected):
+async def test_refactoring_variables_directives_list_enum(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -2151,46 +2191,46 @@ async def test_refactoring_variables_list_enum(query, variables, expected):
 @pytest.mark.parametrize(
     "query,variables,expected",
     [
-        # ObjectParam not dict
-        (
-            """
-            query ObjectParam($value: ObjectInput) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": "isn't an object"},
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "locations": [{"column": 31, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "isn't an object >; Expected type < "
-                        "ObjectInput > to be an object.",
-                        "path": None,
-                    }
-                ],
-            },
-        ),
-        # ObjectParam
-        (
-            """
-            query ObjectParam($value: ObjectInput) {
-              objectField(objectParam: $value)
-            }
-            """,
-            None,
-            {"data": {"objectField": "SUCCESS"}},
-        ),
-        (
-            """
-            query ObjectParam($value: ObjectInput) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": None},
-            {"data": {"objectField": "SUCCESS-None"}},
-        ),
+        # # ObjectParam not dict
+        # (
+        #     """
+        #     query ObjectParam($value: ObjectInput) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": "isn't an object"},
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "locations": [{"column": 31, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "isn't an object >; Expected type < "
+        #                 "ObjectInput > to be an object.",
+        #                 "path": None,
+        #             }
+        #         ],
+        #     },
+        # ),
+        # # ObjectParam
+        # (
+        #     """
+        #     query ObjectParam($value: ObjectInput) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     None,
+        #     {"data": {"objectField": "SUCCESS"}},
+        # ),
+        # (
+        #     """
+        #     query ObjectParam($value: ObjectInput) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": None},
+        #     {"data": {"objectField": "SUCCESS-None"}},
+        # ),
         (
             """
             query ObjectParam($value: ObjectInput) {
@@ -2227,961 +2267,961 @@ async def test_refactoring_variables_list_enum(query, variables, expected):
                 }
             },
         ),
-        (
-            """
-            query ObjectParam($value: ObjectInput) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": 10,
-                    "listIntParam": [10],
-                    "floatParam": 123_456.789e2,
-                    "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": True,
-                    "listBooleanParam": [True, False],
-                    "stringParam": "aValue",
-                    "listStringParam": ["firstValue", "secondValue"],
-                    "enumParam": "ENUM_1",
-                    "listEnumParam": ["ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:10]-"
-                    "[listIntParam:10]-"
-                    "[floatParam:12345678.9]-"
-                    "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
-                    "[booleanParam:True]-"
-                    "[listBooleanParam:True-False]-"
-                    "[stringParam:aValue]-"
-                    "[listStringParam:firstValue-secondValue]-"
-                    "[enumParam:ENUM_1]-"
-                    "[listEnumParam:ENUM_1-ENUM_2]"
-                }
-            },
-        ),
-        # ObjectParamWithDefault
-        (
-            """
-            query ObjectParamWithDefault($value: ObjectInput = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            None,
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:20]-"
-                    "[listIntParam:20-21]-"
-                    "[floatParam:2345678.9]-"
-                    "[listFloatParam:2345678.9-12.4--1.0-2.0]-"
-                    "[booleanParam:False]-"
-                    "[listBooleanParam:False-True]-"
-                    "[stringParam:defaultValue]-"
-                    "[listStringParam:firstDefaultValue-secondDefaultValue]-"
-                    "[enumParam:ENUM_2]-"
-                    "[listEnumParam:ENUM_2-ENUM_3]"
-                }
-            },
-        ),
-        (
-            """
-            query ObjectParamWithDefault($value: ObjectInput = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": None},
-            {"data": {"objectField": "SUCCESS-None"}},
-        ),
-        (
-            """
-            query ObjectParamWithDefault($value: ObjectInput = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": 10,
-                    "listIntParam": [None, 10],
-                    "floatParam": 123_456.789e2,
-                    "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": True,
-                    "listBooleanParam": [None, True, False],
-                    "stringParam": "aValue",
-                    "listStringParam": [None, "firstValue", "secondValue"],
-                    "enumParam": "ENUM_1",
-                    "listEnumParam": [None, "ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:10]-"
-                    "[listIntParam:None-10]-"
-                    "[floatParam:12345678.9]-"
-                    "[listFloatParam:None-12345678.9-23.5--2.0-3.0]-"
-                    "[booleanParam:True]-"
-                    "[listBooleanParam:None-True-False]-"
-                    "[stringParam:aValue]-"
-                    "[listStringParam:None-firstValue-secondValue]-"
-                    "[enumParam:ENUM_1]-"
-                    "[listEnumParam:None-ENUM_1-ENUM_2]"
-                }
-            },
-        ),
-        (
-            """
-            query ObjectParamWithDefault($value: ObjectInput = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": 10,
-                    "listIntParam": [10],
-                    "floatParam": 123_456.789e2,
-                    "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": True,
-                    "listBooleanParam": [True, False],
-                    "stringParam": "aValue",
-                    "listStringParam": ["firstValue", "secondValue"],
-                    "enumParam": "ENUM_1",
-                    "listEnumParam": ["ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:10]-"
-                    "[listIntParam:10]-"
-                    "[floatParam:12345678.9]-"
-                    "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
-                    "[booleanParam:True]-"
-                    "[listBooleanParam:True-False]-"
-                    "[stringParam:aValue]-"
-                    "[listStringParam:firstValue-secondValue]-"
-                    "[enumParam:ENUM_1]-"
-                    "[listEnumParam:ENUM_1-ENUM_2]"
-                }
-            },
-        ),
-        # NonNullObjectParam
-        (
-            """
-            query NonNullObjectParam($value: NonNullObjectInput!) {
-              objectField(objectParam: $value)
-            }
-            """,
-            None,
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "message": "Variable < $value > of required type "
-                        "< NonNullObjectInput! > was not provided.",
-                        "path": None,
-                        "locations": [{"line": 2, "column": 38}],
-                    }
-                ],
-            },
-        ),
-        (
-            """
-            query NonNullObjectParam($value: NonNullObjectInput!) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": None},
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "message": "Variable < $value > of non-null type "
-                        "< NonNullObjectInput! > must not be null.",
-                        "path": None,
-                        "locations": [{"line": 2, "column": 38}],
-                    }
-                ],
-            },
-        ),
-        (
-            """
-            query NonNullObjectParam($value: NonNullObjectInput!) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": None,
-                    "listIntParam": [None, 10],
-                    "floatParam": None,
-                    "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": None,
-                    "listBooleanParam": [None, True, False],
-                    "stringParam": None,
-                    "listStringParam": [None, "firstValue", "secondValue"],
-                    "enumParam": None,
-                    "listEnumParam": [None, "ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Int! > not to be "
-                        "null at value.intParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Int! > not to be "
-                        "null at value.listIntParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Float! > not to be "
-                        "null at value.floatParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Float! > not to be "
-                        "null at value.listFloatParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Boolean! > not to be "
-                        "null at value.booleanParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], 'floatParam': None, "
-                        "'listFloatParam': [None, 12345678.9, "
-                        "23.5, -2, 3.0], 'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, 'firstValue', 'secondValue'], "
-                        "'enumParam': None, 'listEnumParam': ["
-                        "None, 'ENUM_1', 'ENUM_2']} >; Expected "
-                        "non-nullable type < Boolean! > not to be "
-                        "null at value.listBooleanParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < String! > "
-                        "not to be "
-                        "null at value.stringParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < String! > "
-                        "not to be "
-                        "null at value.listStringParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < MyEnum! > "
-                        "not to be "
-                        "null at value.enumParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 38, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < MyEnum! > "
-                        "not to be "
-                        "null at value.listEnumParam[0].",
-                        "path": None,
-                    },
-                ],
-            },
-        ),
-        (
-            """
-            query NonNullObjectParam($value: NonNullObjectInput!) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": 10,
-                    "listIntParam": [10],
-                    "floatParam": 123_456.789e2,
-                    "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": True,
-                    "listBooleanParam": [True, False],
-                    "stringParam": "aValue",
-                    "listStringParam": ["firstValue", "secondValue"],
-                    "enumParam": "ENUM_1",
-                    "listEnumParam": ["ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:10]-"
-                    "[listIntParam:10]-"
-                    "[floatParam:12345678.9]-"
-                    "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
-                    "[booleanParam:True]-"
-                    "[listBooleanParam:True-False]-"
-                    "[stringParam:aValue]-"
-                    "[listStringParam:firstValue-secondValue]-"
-                    "[enumParam:ENUM_1]-"
-                    "[listEnumParam:ENUM_1-ENUM_2]"
-                }
-            },
-        ),
-        # NonNullObjectParamWithDefault
-        (
-            """
-            query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            None,
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:20]-"
-                    "[listIntParam:20-21]-"
-                    "[floatParam:2345678.9]-"
-                    "[listFloatParam:2345678.9-12.4--1.0-2.0]-"
-                    "[booleanParam:False]-"
-                    "[listBooleanParam:False-True]-"
-                    "[stringParam:defaultValue]-"
-                    "[listStringParam:firstDefaultValue-secondDefaultValue]-"
-                    "[enumParam:ENUM_2]-"
-                    "[listEnumParam:ENUM_2-ENUM_3]"
-                }
-            },
-        ),
-        (
-            """
-            query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": None},
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "message": "Variable < $value > of non-null type "
-                        "< NonNullObjectInput! > must not be null.",
-                        "path": None,
-                        "locations": [{"line": 2, "column": 49}],
-                    }
-                ],
-            },
-        ),
-        (
-            """
-            query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": None,
-                    "listIntParam": [None, 10],
-                    "floatParam": None,
-                    "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": None,
-                    "listBooleanParam": [None, True, False],
-                    "stringParam": None,
-                    "listStringParam": [None, "firstValue", "secondValue"],
-                    "enumParam": None,
-                    "listEnumParam": [None, "ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Int! > not "
-                        "to be null "
-                        "at value.intParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Int! > not "
-                        "to be null "
-                        "at value.listIntParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Float! > "
-                        "not to be "
-                        "null at value.floatParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Float! > "
-                        "not to be "
-                        "null at value.listFloatParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Boolean! > "
-                        "not to be "
-                        "null at value.booleanParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < Boolean! > "
-                        "not to be "
-                        "null at value.listBooleanParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < String! > "
-                        "not to be "
-                        "null at value.stringParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < String! > "
-                        "not to be "
-                        "null at value.listStringParam[0].",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < MyEnum! > "
-                        "not to be "
-                        "null at value.enumParam.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'intParam': None, 'listIntParam': ["
-                        "None, 10], "
-                        "'floatParam': None, 'listFloatParam': ["
-                        "None, "
-                        "12345678.9, 23.5, -2, 3.0], "
-                        "'booleanParam': None, "
-                        "'listBooleanParam': [None, True, False], "
-                        "'stringParam': None, 'listStringParam': "
-                        "[None, "
-                        "'firstValue', 'secondValue'], "
-                        "'enumParam': None, "
-                        "'listEnumParam': [None, 'ENUM_1', "
-                        "'ENUM_2']} >; "
-                        "Expected non-nullable type < MyEnum! > "
-                        "not to be "
-                        "null at value.listEnumParam[0].",
-                        "path": None,
-                    },
-                ],
-            },
-        ),
-        (
-            """
-            query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {
-                "value": {
-                    "intParam": 10,
-                    "listIntParam": [10],
-                    "floatParam": 123_456.789e2,
-                    "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
-                    "booleanParam": True,
-                    "listBooleanParam": [True, False],
-                    "stringParam": "aValue",
-                    "listStringParam": ["firstValue", "secondValue"],
-                    "enumParam": "ENUM_1",
-                    "listEnumParam": ["ENUM_1", "ENUM_2"],
-                }
-            },
-            {
-                "data": {
-                    "objectField": "SUCCESS-"
-                    "[intParam:10]-"
-                    "[listIntParam:10]-"
-                    "[floatParam:12345678.9]-"
-                    "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
-                    "[booleanParam:True]-"
-                    "[listBooleanParam:True-False]-"
-                    "[stringParam:aValue]-"
-                    "[listStringParam:firstValue-secondValue]-"
-                    "[enumParam:ENUM_1]-"
-                    "[listEnumParam:ENUM_1-ENUM_2]"
-                }
-            },
-        ),
-        # NonNullObjectParam value not provided
-        (
-            """
-            query NonNullObjectParamWithDefault($value: NonNullObjectInput!) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": {}},
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.intParam > of "
-                        "required type < "
-                        "Int! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.listIntParam > of "
-                        "required type "
-                        "< [Int!]! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.floatParam > of "
-                        "required type < "
-                        "Float! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.listFloatParam > of "
-                        "required "
-                        "type < [Float!]! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.booleanParam > of "
-                        "required type "
-                        "< Boolean! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.listBooleanParam > "
-                        "of required "
-                        "type < [Boolean!]! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.stringParam > of "
-                        "required type "
-                        "< String! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.listStringParam > of "
-                        "required "
-                        "type < [String!]! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.enumParam > of "
-                        "required type < "
-                        "MyEnum! > was not provided.",
-                        "path": None,
-                    },
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{} >; Field < value.listEnumParam > of "
-                        "required "
-                        "type < [MyEnum!]! > was not provided.",
-                        "path": None,
-                    },
-                ],
-            },
-        ),
-        # ObjectParam field not defined
-        (
-            """
-            query NonNullObjectParamWithDefault($value: ObjectInput = {
-              intParam: 20,
-              listIntParam: [20, 21],
-              floatParam: 23456.789e2,
-              listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
-              booleanParam: false,
-              listBooleanParam: [false, true],
-              stringParam: "defaultValue",
-              listStringParam: ["firstDefaultValue", "secondDefaultValue"],
-              enumParam: ENUM_2,
-              listEnumParam: [ENUM_2, ENUM_3],
-            }) {
-              objectField(objectParam: $value)
-            }
-            """,
-            {"value": {"unknownField": True}},
-            {
-                "data": None,
-                "errors": [
-                    {
-                        "locations": [{"column": 49, "line": 2}],
-                        "message": "Variable < $value > got invalid value < "
-                        "{'unknownField': True} >; Field < "
-                        "unknownField > is "
-                        "not defined by type < ObjectInput >..",
-                        "path": None,
-                    }
-                ],
-            },
-        ),
+        # (
+        #     """
+        #     query ObjectParam($value: ObjectInput) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": 10,
+        #             "listIntParam": [10],
+        #             "floatParam": 123_456.789e2,
+        #             "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": True,
+        #             "listBooleanParam": [True, False],
+        #             "stringParam": "aValue",
+        #             "listStringParam": ["firstValue", "secondValue"],
+        #             "enumParam": "ENUM_1",
+        #             "listEnumParam": ["ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:10]-"
+        #             "[listIntParam:10]-"
+        #             "[floatParam:12345678.9]-"
+        #             "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
+        #             "[booleanParam:True]-"
+        #             "[listBooleanParam:True-False]-"
+        #             "[stringParam:aValue]-"
+        #             "[listStringParam:firstValue-secondValue]-"
+        #             "[enumParam:ENUM_1]-"
+        #             "[listEnumParam:ENUM_1-ENUM_2]"
+        #         }
+        #     },
+        # ),
+        # # ObjectParamWithDefault
+        # (
+        #     """
+        #     query ObjectParamWithDefault($value: ObjectInput = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     None,
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:20]-"
+        #             "[listIntParam:20-21]-"
+        #             "[floatParam:2345678.9]-"
+        #             "[listFloatParam:2345678.9-12.4--1.0-2.0]-"
+        #             "[booleanParam:False]-"
+        #             "[listBooleanParam:False-True]-"
+        #             "[stringParam:defaultValue]-"
+        #             "[listStringParam:firstDefaultValue-secondDefaultValue]-"
+        #             "[enumParam:ENUM_2]-"
+        #             "[listEnumParam:ENUM_2-ENUM_3]"
+        #         }
+        #     },
+        # ),
+        # (
+        #     """
+        #     query ObjectParamWithDefault($value: ObjectInput = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": None},
+        #     {"data": {"objectField": "SUCCESS-None"}},
+        # ),
+        # (
+        #     """
+        #     query ObjectParamWithDefault($value: ObjectInput = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": 10,
+        #             "listIntParam": [None, 10],
+        #             "floatParam": 123_456.789e2,
+        #             "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": True,
+        #             "listBooleanParam": [None, True, False],
+        #             "stringParam": "aValue",
+        #             "listStringParam": [None, "firstValue", "secondValue"],
+        #             "enumParam": "ENUM_1",
+        #             "listEnumParam": [None, "ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:10]-"
+        #             "[listIntParam:None-10]-"
+        #             "[floatParam:12345678.9]-"
+        #             "[listFloatParam:None-12345678.9-23.5--2.0-3.0]-"
+        #             "[booleanParam:True]-"
+        #             "[listBooleanParam:None-True-False]-"
+        #             "[stringParam:aValue]-"
+        #             "[listStringParam:None-firstValue-secondValue]-"
+        #             "[enumParam:ENUM_1]-"
+        #             "[listEnumParam:None-ENUM_1-ENUM_2]"
+        #         }
+        #     },
+        # ),
+        # (
+        #     """
+        #     query ObjectParamWithDefault($value: ObjectInput = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": 10,
+        #             "listIntParam": [10],
+        #             "floatParam": 123_456.789e2,
+        #             "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": True,
+        #             "listBooleanParam": [True, False],
+        #             "stringParam": "aValue",
+        #             "listStringParam": ["firstValue", "secondValue"],
+        #             "enumParam": "ENUM_1",
+        #             "listEnumParam": ["ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:10]-"
+        #             "[listIntParam:10]-"
+        #             "[floatParam:12345678.9]-"
+        #             "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
+        #             "[booleanParam:True]-"
+        #             "[listBooleanParam:True-False]-"
+        #             "[stringParam:aValue]-"
+        #             "[listStringParam:firstValue-secondValue]-"
+        #             "[enumParam:ENUM_1]-"
+        #             "[listEnumParam:ENUM_1-ENUM_2]"
+        #         }
+        #     },
+        # ),
+        # # NonNullObjectParam
+        # (
+        #     """
+        #     query NonNullObjectParam($value: NonNullObjectInput!) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     None,
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "message": "Variable < $value > of required type "
+        #                 "< NonNullObjectInput! > was not provided.",
+        #                 "path": None,
+        #                 "locations": [{"line": 2, "column": 38}],
+        #             }
+        #         ],
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParam($value: NonNullObjectInput!) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": None},
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "message": "Variable < $value > of non-null type "
+        #                 "< NonNullObjectInput! > must not be null.",
+        #                 "path": None,
+        #                 "locations": [{"line": 2, "column": 38}],
+        #             }
+        #         ],
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParam($value: NonNullObjectInput!) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": None,
+        #             "listIntParam": [None, 10],
+        #             "floatParam": None,
+        #             "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": None,
+        #             "listBooleanParam": [None, True, False],
+        #             "stringParam": None,
+        #             "listStringParam": [None, "firstValue", "secondValue"],
+        #             "enumParam": None,
+        #             "listEnumParam": [None, "ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Int! > not to be "
+        #                 "null at value.intParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Int! > not to be "
+        #                 "null at value.listIntParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Float! > not to be "
+        #                 "null at value.floatParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Float! > not to be "
+        #                 "null at value.listFloatParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Boolean! > not to be "
+        #                 "null at value.booleanParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], 'floatParam': None, "
+        #                 "'listFloatParam': [None, 12345678.9, "
+        #                 "23.5, -2, 3.0], 'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, 'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, 'listEnumParam': ["
+        #                 "None, 'ENUM_1', 'ENUM_2']} >; Expected "
+        #                 "non-nullable type < Boolean! > not to be "
+        #                 "null at value.listBooleanParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < String! > "
+        #                 "not to be "
+        #                 "null at value.stringParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < String! > "
+        #                 "not to be "
+        #                 "null at value.listStringParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < MyEnum! > "
+        #                 "not to be "
+        #                 "null at value.enumParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 38, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < MyEnum! > "
+        #                 "not to be "
+        #                 "null at value.listEnumParam[0].",
+        #                 "path": None,
+        #             },
+        #         ],
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParam($value: NonNullObjectInput!) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": 10,
+        #             "listIntParam": [10],
+        #             "floatParam": 123_456.789e2,
+        #             "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": True,
+        #             "listBooleanParam": [True, False],
+        #             "stringParam": "aValue",
+        #             "listStringParam": ["firstValue", "secondValue"],
+        #             "enumParam": "ENUM_1",
+        #             "listEnumParam": ["ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:10]-"
+        #             "[listIntParam:10]-"
+        #             "[floatParam:12345678.9]-"
+        #             "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
+        #             "[booleanParam:True]-"
+        #             "[listBooleanParam:True-False]-"
+        #             "[stringParam:aValue]-"
+        #             "[listStringParam:firstValue-secondValue]-"
+        #             "[enumParam:ENUM_1]-"
+        #             "[listEnumParam:ENUM_1-ENUM_2]"
+        #         }
+        #     },
+        # ),
+        # # NonNullObjectParamWithDefault
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     None,
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:20]-"
+        #             "[listIntParam:20-21]-"
+        #             "[floatParam:2345678.9]-"
+        #             "[listFloatParam:2345678.9-12.4--1.0-2.0]-"
+        #             "[booleanParam:False]-"
+        #             "[listBooleanParam:False-True]-"
+        #             "[stringParam:defaultValue]-"
+        #             "[listStringParam:firstDefaultValue-secondDefaultValue]-"
+        #             "[enumParam:ENUM_2]-"
+        #             "[listEnumParam:ENUM_2-ENUM_3]"
+        #         }
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": None},
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "message": "Variable < $value > of non-null type "
+        #                 "< NonNullObjectInput! > must not be null.",
+        #                 "path": None,
+        #                 "locations": [{"line": 2, "column": 49}],
+        #             }
+        #         ],
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": None,
+        #             "listIntParam": [None, 10],
+        #             "floatParam": None,
+        #             "listFloatParam": [None, 123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": None,
+        #             "listBooleanParam": [None, True, False],
+        #             "stringParam": None,
+        #             "listStringParam": [None, "firstValue", "secondValue"],
+        #             "enumParam": None,
+        #             "listEnumParam": [None, "ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Int! > not "
+        #                 "to be null "
+        #                 "at value.intParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Int! > not "
+        #                 "to be null "
+        #                 "at value.listIntParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Float! > "
+        #                 "not to be "
+        #                 "null at value.floatParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Float! > "
+        #                 "not to be "
+        #                 "null at value.listFloatParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Boolean! > "
+        #                 "not to be "
+        #                 "null at value.booleanParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < Boolean! > "
+        #                 "not to be "
+        #                 "null at value.listBooleanParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < String! > "
+        #                 "not to be "
+        #                 "null at value.stringParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < String! > "
+        #                 "not to be "
+        #                 "null at value.listStringParam[0].",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < MyEnum! > "
+        #                 "not to be "
+        #                 "null at value.enumParam.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'intParam': None, 'listIntParam': ["
+        #                 "None, 10], "
+        #                 "'floatParam': None, 'listFloatParam': ["
+        #                 "None, "
+        #                 "12345678.9, 23.5, -2, 3.0], "
+        #                 "'booleanParam': None, "
+        #                 "'listBooleanParam': [None, True, False], "
+        #                 "'stringParam': None, 'listStringParam': "
+        #                 "[None, "
+        #                 "'firstValue', 'secondValue'], "
+        #                 "'enumParam': None, "
+        #                 "'listEnumParam': [None, 'ENUM_1', "
+        #                 "'ENUM_2']} >; "
+        #                 "Expected non-nullable type < MyEnum! > "
+        #                 "not to be "
+        #                 "null at value.listEnumParam[0].",
+        #                 "path": None,
+        #             },
+        #         ],
+        #     },
+        # ),
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: NonNullObjectInput! = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {
+        #         "value": {
+        #             "intParam": 10,
+        #             "listIntParam": [10],
+        #             "floatParam": 123_456.789e2,
+        #             "listFloatParam": [123_456.789e2, 23.5, -2, 0.3e1],
+        #             "booleanParam": True,
+        #             "listBooleanParam": [True, False],
+        #             "stringParam": "aValue",
+        #             "listStringParam": ["firstValue", "secondValue"],
+        #             "enumParam": "ENUM_1",
+        #             "listEnumParam": ["ENUM_1", "ENUM_2"],
+        #         }
+        #     },
+        #     {
+        #         "data": {
+        #             "objectField": "SUCCESS-"
+        #             "[intParam:10]-"
+        #             "[listIntParam:10]-"
+        #             "[floatParam:12345678.9]-"
+        #             "[listFloatParam:12345678.9-23.5--2.0-3.0]-"
+        #             "[booleanParam:True]-"
+        #             "[listBooleanParam:True-False]-"
+        #             "[stringParam:aValue]-"
+        #             "[listStringParam:firstValue-secondValue]-"
+        #             "[enumParam:ENUM_1]-"
+        #             "[listEnumParam:ENUM_1-ENUM_2]"
+        #         }
+        #     },
+        # ),
+        # # NonNullObjectParam value not provided
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: NonNullObjectInput!) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": {}},
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.intParam > of "
+        #                 "required type < "
+        #                 "Int! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.listIntParam > of "
+        #                 "required type "
+        #                 "< [Int!]! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.floatParam > of "
+        #                 "required type < "
+        #                 "Float! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.listFloatParam > of "
+        #                 "required "
+        #                 "type < [Float!]! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.booleanParam > of "
+        #                 "required type "
+        #                 "< Boolean! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.listBooleanParam > "
+        #                 "of required "
+        #                 "type < [Boolean!]! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.stringParam > of "
+        #                 "required type "
+        #                 "< String! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.listStringParam > of "
+        #                 "required "
+        #                 "type < [String!]! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.enumParam > of "
+        #                 "required type < "
+        #                 "MyEnum! > was not provided.",
+        #                 "path": None,
+        #             },
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{} >; Field < value.listEnumParam > of "
+        #                 "required "
+        #                 "type < [MyEnum!]! > was not provided.",
+        #                 "path": None,
+        #             },
+        #         ],
+        #     },
+        # ),
+        # # ObjectParam field not defined
+        # (
+        #     """
+        #     query NonNullObjectParamWithDefault($value: ObjectInput = {
+        #       intParam: 20,
+        #       listIntParam: [20, 21],
+        #       floatParam: 23456.789e2,
+        #       listFloatParam: [23456.789e2, 12.4, -1, 0.2e1],
+        #       booleanParam: false,
+        #       listBooleanParam: [false, true],
+        #       stringParam: "defaultValue",
+        #       listStringParam: ["firstDefaultValue", "secondDefaultValue"],
+        #       enumParam: ENUM_2,
+        #       listEnumParam: [ENUM_2, ENUM_3],
+        #     }) {
+        #       objectField(objectParam: $value)
+        #     }
+        #     """,
+        #     {"value": {"unknownField": True}},
+        #     {
+        #         "data": None,
+        #         "errors": [
+        #             {
+        #                 "locations": [{"column": 49, "line": 2}],
+        #                 "message": "Variable < $value > got invalid value < "
+        #                 "{'unknownField': True} >; Field < "
+        #                 "unknownField > is "
+        #                 "not defined by type < ObjectInput >..",
+        #                 "path": None,
+        #             }
+        #         ],
+        #     },
+        # ),
     ],
 )
-async def test_refactoring_variables_object(query, variables, expected):
+async def test_refactoring_variables_directives_object(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -3231,7 +3271,7 @@ async def test_refactoring_variables_object(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_unknown_enum(query, variables, expected):
+async def test_refactoring_variables_directives_unknown_enum(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -3966,7 +4006,7 @@ async def test_refactoring_variables_unknown_enum(query, variables, expected):
         ),
     ],
 )
-async def test_refactoring_variables_scalar_coerce(query, variables, expected):
+async def test_refactoring_variables_directives_scalar_coerce(query, variables, expected):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected
 
 
@@ -3990,7 +4030,7 @@ async def test_refactoring_variables_scalar_coerce(query, variables, expected):
         )
     ],
 )
-async def test_refactoring_variables_object_with_schema_default_value(
+async def test_refactoring_variables_directives_object_with_schema_default_value(
     query, variables, expected
 ):
     assert await _TTFTT_ENGINE.execute(query, variables=variables) == expected

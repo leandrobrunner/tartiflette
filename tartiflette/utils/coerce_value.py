@@ -1,58 +1,21 @@
 from collections import Iterable, Mapping
-from typing import Any, List, Optional, Union
+from functools import partial
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from tartiflette.constants import UNDEFINED_VALUE
 from tartiflette.types.exceptions import GraphQLError
+from tartiflette.types.helpers import wraps_with_directives
 from tartiflette.types.helpers.definition import (
+    get_wrapped_type,
     is_enum_type,
     is_input_object_type,
     is_list_type,
     is_non_null_type,
     is_scalar_type,
+    is_wrapping_type,
 )
+from tartiflette.utils.coercer_way import CoercerWay
 from tartiflette.utils.values import is_invalid_value
-
-
-class CoercionResult:
-    """
-    TODO:
-    """
-
-    __slots__ = ("value", "errors")
-
-    def __init__(
-        self,
-        value: Optional[Any] = None,
-        errors: Optional[List["GraphQLError"]] = None,
-    ) -> None:
-        """
-        :param value: TODO:
-        :param errors: TODO:
-        :type value: TODO:
-        :type errors: TODO:
-        """
-        # TODO: if errors `value` shouldn't it be "UNDEFINED_VALUE" instead?
-        self.value = value if not errors else None
-        self.errors = errors
-
-    def __repr__(self) -> str:
-        """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
-        """
-        return "CoercionResult(value=%r, errors=%r)" % (
-            self.value,
-            self.errors,
-        )
-
-    def __iter__(self) -> Iterable:
-        """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
-        """
-        yield from [self.value, self.errors]
 
 
 class Path:
@@ -98,6 +61,48 @@ class Path:
         return f"value{path_str}" if path_str else ""
 
 
+class CoercionResult:
+    """
+    TODO:
+    """
+
+    __slots__ = ("value", "errors")
+
+    def __init__(
+        self,
+        value: Optional[Any] = None,
+        errors: Optional[List["GraphQLError"]] = None,
+    ) -> None:
+        """
+        :param value: TODO:
+        :param errors: TODO:
+        :type value: TODO:
+        :type errors: TODO:
+        """
+        # TODO: if errors `value` shouldn't it be "UNDEFINED_VALUE" instead?
+        self.value = value if not errors else None
+        self.errors = errors
+
+    def __repr__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return "CoercionResult(value=%r, errors=%r)" % (
+            self.value,
+            self.errors,
+        )
+
+    def __iter__(self) -> Iterable:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        yield from [self.value, self.errors]
+
+
 def coercion_error(
     message, node=None, path=None, sub_message=None, original_error=None
 ):
@@ -126,167 +131,342 @@ def coercion_error(
     )
 
 
-def coerce_value(
+def scalar_coercer(
+    scalar: "GraphQLScalarType",
+    node: Optional["Node"],
     value: Any,
-    schema_type: "GraphQLType",
-    node: Optional["Node"] = None,
+    *args,
     path: Optional["Path"] = None,
+    **kwargs,
 ) -> "CoercionResult":
     """
     TODO:
-    :param value: TODO:
-    :param schema_type: TODO:
+    :param scalar: TODO:
     :param node: TODO:
     :param path: TODO:
-    :type value: TODO:
-    :type schema_type: TODO:
+    :param value: TODO:
+    :param args: TODO:
+    :param kwargs: TODO:
+    :type scalar: TODO:
     :type node: TODO:
     :type path: TODO:
+    :type value: TODO:
+    :type args: TODO:
+    :type kwargs: TODO:
     :return: TODO:
     :rtype: TODO:
     """
-    if is_non_null_type(schema_type):
-        if value is None:
-            return CoercionResult(
-                errors=[
-                    coercion_error(
-                        f"Expected non-nullable type < {schema_type} > not to be null",
-                        node,
-                        path,
-                    )
-                ]
-            )
-        return coerce_value(value, schema_type.wrapped_type, node, path)
-
     if value is None:
         return CoercionResult(value=None)
 
-    if is_scalar_type(schema_type):
-        try:
-            coerced_value = schema_type.coerce_input(value)
-            if is_invalid_value(coerced_value):
-                return CoercionResult(
-                    errors=[
-                        coercion_error(
-                            f"Expected type < {schema_type.name} >", node, path
-                        )
-                    ]
-                )
-        except Exception as e:
+    try:
+        coerced_value = scalar.coerce_input(value)
+        if is_invalid_value(coerced_value):
             return CoercionResult(
                 errors=[
                     coercion_error(
-                        f"Expected type < {schema_type.name} >",
-                        node,
-                        path,
-                        sub_message=str(e),
-                        original_error=e,
+                        f"Expected type < {scalar.name} >", node, path
                     )
                 ]
             )
-        return CoercionResult(value=coerced_value)
-
-    if is_enum_type(schema_type):
-        try:
-            return CoercionResult(value=schema_type.get_value(value))
-        except KeyError:
-            # TODO: try to compute a suggestion list of valid values depending
-            # on the invalid value sent and returns it as error sub message
-            return CoercionResult(
-                errors=[
-                    coercion_error(
-                        f"Expected type < {schema_type.name} >", node, path
-                    )
-                ]
-            )
-
-    if is_list_type(schema_type):
-        item_type = schema_type.wrapped_type
-
-        if isinstance(value, Iterable):  # TODO: str are iterable so?...
-            errors = []
-            coerced_values = []
-            for index, item_value in enumerate(value):
-                coerced_value, coerce_errors = coerce_value(
-                    item_value, item_type, node, Path(path, index)
-                )
-                if coerce_errors:
-                    errors.extend(coerce_errors)
-                elif not errors:
-                    coerced_values.append(coerced_value)
-            return CoercionResult(value=coerced_values, errors=errors)
-
-        coerced_item_value, coerced_item_errors = coerce_value(
-            value, item_type, node
-        )
+    except Exception as e:
         return CoercionResult(
-            value=[coerced_item_value], errors=coerced_item_errors
+            errors=[
+                coercion_error(
+                    f"Expected type < {scalar.name} >",
+                    node,
+                    path,
+                    sub_message=str(e),
+                    original_error=e,
+                )
+            ]
+        )
+    return CoercionResult(value=coerced_value)
+
+
+def enum_coercer(
+    enum: "GraphQLEnumType",
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    """
+    TODO:
+    :param enum: TODO:
+    :param node: TODO:
+    :param path: TODO:
+    :param value: TODO:
+    :param args: TODO:
+    :param kwargs: TODO:
+    :type enum: TODO:
+    :type node: TODO:
+    :type path: TODO:
+    :type value: TODO:
+    :type args: TODO:
+    :type kwargs: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    if value is None:
+        return CoercionResult(value=None)
+
+    try:
+        return CoercionResult(value=enum.get_value(value))
+    except KeyError:
+        # TODO: try to compute a suggestion list of valid values depending
+        # on the invalid value sent and returns it as error sub message
+        return CoercionResult(
+            errors=[
+                coercion_error(f"Expected type < {enum.name} >", node, path)
+            ]
         )
 
-    if is_input_object_type(schema_type):
-        if not isinstance(value, Mapping):
-            return CoercionResult(
-                errors=[
-                    coercion_error(
-                        f"Expected type < {schema_type.name} > to be an object",
-                        node,
-                        path,
-                    )
-                ]
-            )
 
-        errors = []
-        coerced_values = {}
-        fields = schema_type.arguments
+def input_object_coercer(
+    input_object: "GraphQLInputObjectType",
+    input_field_coercers: Dict[str, Callable],
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    """
+    TODO:
+    :param input_object: TODO:
+    :param input_field_coercers: TODO:
+    :param node: TODO:
+    :param path: TODO:
+    :param value: TODO:
+    :type input_object: TODO:
+    :type input_field_coercers: TODO:
+    :type node: TODO:
+    :type path: TODO:
+    :type value: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    if value is None:
+        return CoercionResult(value=None)
 
-        for field_name, field in fields.items():
-            try:
-                field_value = value[field_name]
-            except KeyError:
-                field_value = UNDEFINED_VALUE
-
-            if is_invalid_value(field_value):
-                # TODO: at schema build we should use UNDEFINED_VALUE for
-                # `default_value` attribute of a field to know if a field has
-                # a defined default value (since default value could be `None`)
-                # once done, we should check for `UNDEFINED_VALUE` here.
-                if field.default_value is not None:
-                    coerced_values[field_name] = field.default_value
-                # TODO: check if `gql_type` is the correct attr to call here
-                elif is_non_null_type(field.gql_type):
-                    errors.append(
-                        coercion_error(
-                            f"Field < {Path(path, field_name)} > of required type "
-                            f"< {field.gql_type} > was not provided",
-                            node,
-                        )
-                    )
-            else:
-                coerced_field_value, coerced_field_errors = coerce_value(
-                    field_value,
-                    field.get_gql_type(),
+    if not isinstance(value, Mapping):
+        return CoercionResult(
+            errors=[
+                coercion_error(
+                    f"Expected type < {input_object.name} > to be an object",
                     node,
-                    Path(path, field_name),
+                    path,
                 )
-                if coerced_field_errors:
-                    errors.extend(coerced_field_errors)
-                elif not errors:
-                    coerced_values[field_name] = coerced_field_value
+            ]
+        )
 
-        for field_name in value:
-            if field_name not in fields:
-                # TODO: try to compute a suggestion list of valid fields
-                # depending on the invalid field name returns it as
-                # error sub message
+    errors = []
+    coerced_values = {}
+    fields = input_object.arguments
+
+    for field_name, field in fields.items():
+        field_value = value.get(field_name, UNDEFINED_VALUE)
+        if is_invalid_value(field_value):
+            # TODO: at schema build we should use UNDEFINED_VALUE for
+            # `default_value` attribute of a field to know if a field has
+            # a defined default value (since default value could be `None`)
+            # once done, we should check for `UNDEFINED_VALUE` here.
+            if field.default_value is not None:
+                coerced_values[field_name] = field.default_value
+            # TODO: check if `gql_type` is the correct attr to call here
+            elif is_non_null_type(field.gql_type):
                 errors.append(
                     coercion_error(
-                        f"Field < {field_name} > is not defined by type "
-                        f"< {schema_type.name} >.",
+                        f"Field < {Path(path, field_name)} > of required type "
+                        f"< {field.gql_type} > was not provided",
                         node,
-                        path,
                     )
                 )
+        else:
+            coerced_field_value, coerced_field_errors = input_field_coercers[
+                field_name
+            ](node, field_value, path=Path(path, field_name))
+            if coerced_field_errors:
+                errors.extend(coerced_field_errors)
+            elif not errors:
+                coerced_values[field_name] = coerced_field_value
 
+    for field_name in value:
+        if field_name not in fields:
+            # TODO: try to compute a suggestion list of valid fields
+            # depending on the invalid field name returns it as
+            # error sub message
+            errors.append(
+                coercion_error(
+                    f"Field < {field_name} > is not defined by type "
+                    f"< {input_object.name} >.",
+                    node,
+                    path,
+                )
+            )
+
+    return CoercionResult(value=coerced_values, errors=errors)
+
+
+def list_coercer(
+    inner_coercer: Callable,
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    """
+    TODO:
+    :param inner_coercer: TODO:
+    :param node: TODO:
+    :param path: TODO:
+    :param value: TODO:
+    :param args: TODO:
+    :param kwargs: TODO:
+    :type inner_coercer: TODO:
+    :type node: TODO:
+    :type path: TODO:
+    :type value: TODO:
+    :type args: TODO:
+    :type kwargs: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    if value is None:
+        return CoercionResult(value=None)
+
+    if isinstance(value, Iterable):  # TODO: str are iterable so?...
+        errors = []
+        coerced_values = []
+        for index, item_value in enumerate(value):
+            coerced_value, coerce_errors = inner_coercer(
+                node, item_value, path=Path(path, index)
+            )
+            if coerce_errors:
+                errors.extend(coerce_errors)
+            elif not errors:
+                coerced_values.append(coerced_value)
         return CoercionResult(value=coerced_values, errors=errors)
 
-    raise TypeError(f"Unexpected input type: < {schema_type} >.")
+    coerced_item_value, coerced_item_errors = inner_coercer(
+        node, value, path=path
+    )
+    return CoercionResult(
+        value=[coerced_item_value], errors=coerced_item_errors
+    )
+
+
+def non_null_coercer(
+    schema_type: "GraphQLType",
+    inner_coercer: Callable,
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    """
+    TODO:
+    :param schema_type: TODO:
+    :param inner_coercer: TODO:
+    :param node: TODO:
+    :param path: TODO:
+    :param value: TODO:
+    :param args: TODO:
+    :param kwargs: TODO:
+    :type schema_type: TODO:
+    :type inner_coercer: TODO:
+    :type node: TODO:
+    :type path: TODO:
+    :type value: TODO:
+    :type args: TODO:
+    :type kwargs: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    if value is None:
+        return CoercionResult(
+            errors=[
+                coercion_error(
+                    f"Expected non-nullable type < {schema_type} > not to be null",
+                    node,
+                    path,
+                )
+            ]
+        )
+    return inner_coercer(node, value, path=path)
+
+
+async def _input_directive_runner(
+    directives,
+    coercers,
+    # schema_type: "GraphQLType",
+    # inner_coercer: Callable,
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    return await directives(
+        await coercers(node, value, *args, path=path, **kwargs), *args, **kwargs
+    )
+
+
+def get_variable_definition_coercer(
+    schema_type: "GraphQLType",
+    directives_definition: Optional[List[Dict[str, Any]]] = None,
+) -> Callable:
+    """
+    TODO:
+    :param schema_type: TODO:
+    :param directives_definition: TODO:
+    :type schema_type: TODO:
+    :type directives_definition: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    wrapped_type = get_wrapped_type(schema_type)
+    if is_scalar_type(wrapped_type):
+        coercer = partial(scalar_coercer, wrapped_type)
+    elif is_enum_type(wrapped_type):
+        coercer = partial(enum_coercer, wrapped_type)
+    elif is_input_object_type(wrapped_type):
+        coercer = partial(
+            input_object_coercer,
+            wrapped_type,
+            {
+                name: get_variable_definition_coercer(
+                    argument.graphql_type,
+                    argument.directives_definition
+                )
+                for name, argument in wrapped_type.arguments.items()
+            },
+        )
+    else:
+        coercer = lambda *args, **kwargs: None  # Not an InputType anyway...
+
+    inner_type = schema_type
+    wrapper_coercers = []
+    while is_wrapping_type(inner_type):
+        if is_list_type(inner_type):
+            wrapper_coercers.append(list_coercer)
+        elif is_non_null_type(inner_type):
+            wrapper_coercers.append(partial(non_null_coercer, inner_type))
+        inner_type = inner_type.wrapped_type
+
+    for wrapper_coercer in wrapper_coercers[::-1]:
+        coercer = partial(wrapper_coercer, coercer)
+
+    # if directives_definition:
+    #     directives = wraps_with_directives(
+    #         directives_definition=directives_definition,
+    #         directive_hook="on_post_input_coercion",
+    #     )
+    #     if directives:
+    #         coercer = partial(_input_directive_runner, directives, coercer)
+
+    return coercer

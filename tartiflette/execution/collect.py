@@ -2,6 +2,9 @@ from functools import lru_cache, partial
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 from tartiflette.execution.nodes.field import ExecutableFieldNode
+from tartiflette.execution.nodes.variable_definition import (
+    variable_definition_node_to_executable,
+)
 from tartiflette.execution.values import get_argument_values
 from tartiflette.language.ast import (
     FieldNode,
@@ -261,3 +264,24 @@ async def collect_executables(
             )
 
     return fields
+
+
+def collect_executable_variable_definitions(
+    schema: "GraphQLSchema",
+    variable_definition_nodes: List["VariableDefinitionNode"],
+) -> List["ExecutableVariableDefinition"]:
+    """
+    TODO:
+    :param schema: TODO:
+    :param variable_definitions: TODO:
+    :type schema: TODO:
+    :type variable_definitions: TODO:
+    :return: TODO:
+    :rtype: TODO:
+    """
+    return [
+        variable_definition_node_to_executable(
+            schema, variable_definition_node
+        )
+        for variable_definition_node in variable_definition_nodes
+    ]

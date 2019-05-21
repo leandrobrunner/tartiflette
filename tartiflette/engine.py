@@ -82,6 +82,7 @@ class Engine:
         :return: TODO:
         :rtype: TODO:
         """
+        print()
         document, errors = parse_and_validate_query(query)
         if errors:
             return self._build_response(errors=errors)

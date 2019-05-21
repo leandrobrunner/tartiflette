@@ -18,7 +18,21 @@ def get_named_type(schema_type: "GraphQLType") -> "GraphQLType":
     """
     inner_type = schema_type
     while is_wrapping_type(inner_type):
-        inner_type = schema_type.wrapped_type
+        inner_type = inner_type.wrapped_type
+    return inner_type
+
+
+def get_wrapped_type(schema_type: "GraphQLType") -> "GraphQLType":
+    """
+    TODO:
+    :param schema_type: TODO:
+    :type schema_type: GraphQLType
+    :return: TODO:
+    :rtype: GraphQLType
+    """
+    inner_type = schema_type
+    while is_wrapping_type(inner_type):
+        inner_type = inner_type.wrapped_type
     return inner_type
 
 

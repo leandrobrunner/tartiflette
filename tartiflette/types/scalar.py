@@ -54,22 +54,22 @@ class GraphQLScalarType(GraphQLType):
 
     def bake(self, schema):
         super().bake(schema)
-        directives_definition = get_directive_instances(
+        self.directives_definition = get_directive_instances(
             self._directives, self._schema
         )
         self._directives_implementations = {
             CoercerWay.OUTPUT: wraps_with_directives(
-                directives_definition=directives_definition,
+                directives_definition=self.directives_definition,
                 directive_hook="on_pre_output_coercion",
             ),
             CoercerWay.INPUT: wraps_with_directives(
-                directives_definition=directives_definition,
+                directives_definition=self.directives_definition,
                 directive_hook="on_post_input_coercion",
             ),
         }
 
         self._introspection_directives = wraps_with_directives(
-            directives_definition=directives_definition,
+            directives_definition=self.directives_definition,
             directive_hook="on_introspection",
         )
 

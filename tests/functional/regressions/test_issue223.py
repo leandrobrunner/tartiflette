@@ -50,7 +50,7 @@ type OKLM @addValue(value: 53) {
 }
 
 type Wahou {
-    wieght: OKLM
+    weight: OKLM
     height: OKLM
 }
 
@@ -67,7 +67,7 @@ type Query {
 
 @Resolver("Query.test5", schema_name="issue223")
 async def resolver_test5(_pr, _args, _ctx, _info):
-    return {"wieght": {"value": 2}, "height": {"value": 6}}
+    return {"weight": {"value": 2}, "height": {"value": 6}}
 
 
 @Directive("addValue", schema_name="issue223")
@@ -191,10 +191,10 @@ _ENGINE = Engine(_SDL, schema_name="issue223")
         ),
         ("query { test4 }", {"data": {"test4": "RED"}}),
         (
-            "query { test5 { wieght { value } height { value } } }",
+            "query { test5 { weight { value } height { value } } }",
             {
                 "data": {
-                    "test5": {"wieght": {"value": 55}, "height": {"value": 59}}
+                    "test5": {"weight": {"value": 55}, "height": {"value": 59}}
                 }
             },
         ),
