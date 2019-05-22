@@ -131,7 +131,7 @@ def coercion_error(
     )
 
 
-def scalar_coercer(
+async def scalar_coercer(
     scalar: "GraphQLScalarType",
     node: Optional["Node"],
     value: Any,
@@ -184,7 +184,7 @@ def scalar_coercer(
     return CoercionResult(value=coerced_value)
 
 
-def enum_coercer(
+async def enum_coercer(
     enum: "GraphQLEnumType",
     node: Optional["Node"],
     value: Any,
@@ -224,7 +224,7 @@ def enum_coercer(
         )
 
 
-def input_object_coercer(
+async def input_object_coercer(
     input_object: "GraphQLInputObjectType",
     input_field_coercers: Dict[str, Callable],
     node: Optional["Node"],
@@ -285,7 +285,7 @@ def input_object_coercer(
                     )
                 )
         else:
-            coerced_field_value, coerced_field_errors = input_field_coercers[
+            coerced_field_value, coerced_field_errors = await input_field_coercers[
                 field_name
             ](node, field_value, path=Path(path, field_name))
             if coerced_field_errors:
@@ -310,7 +310,7 @@ def input_object_coercer(
     return CoercionResult(value=coerced_values, errors=errors)
 
 
-def list_coercer(
+async def list_coercer(
     inner_coercer: Callable,
     node: Optional["Node"],
     value: Any,
@@ -342,7 +342,7 @@ def list_coercer(
         errors = []
         coerced_values = []
         for index, item_value in enumerate(value):
-            coerced_value, coerce_errors = inner_coercer(
+            coerced_value, coerce_errors = await inner_coercer(
                 node, item_value, path=Path(path, index)
             )
             if coerce_errors:
@@ -351,7 +351,7 @@ def list_coercer(
                 coerced_values.append(coerced_value)
         return CoercionResult(value=coerced_values, errors=errors)
 
-    coerced_item_value, coerced_item_errors = inner_coercer(
+    coerced_item_value, coerced_item_errors = await inner_coercer(
         node, value, path=path
     )
     return CoercionResult(
@@ -359,7 +359,7 @@ def list_coercer(
     )
 
 
-def non_null_coercer(
+async def non_null_coercer(
     schema_type: "GraphQLType",
     inner_coercer: Callable,
     node: Optional["Node"],
@@ -397,23 +397,23 @@ def non_null_coercer(
                 )
             ]
         )
-    return inner_coercer(node, value, path=path)
+    return await inner_coercer(node, value, path=path)
 
 
-async def _input_directive_runner(
-    directives,
-    coercers,
-    # schema_type: "GraphQLType",
-    # inner_coercer: Callable,
-    node: Optional["Node"],
-    value: Any,
-    *args,
-    path: Optional["Path"] = None,
-    **kwargs,
-) -> "CoercionResult":
-    return await directives(
-        await coercers(node, value, *args, path=path, **kwargs), *args, **kwargs
-    )
+# async def _input_directive_runner(
+#     directives,
+#     coercers,
+#     # schema_type: "GraphQLType",
+#     # inner_coercer: Callable,
+#     node: Optional["Node"],
+#     value: Any,
+#     *args,
+#     path: Optional["Path"] = None,
+#     **kwargs,
+# ) -> "CoercionResult":
+#     return await directives(
+#         await coercers(node, value, *args, path=path, **kwargs), *args, **kwargs
+#     )
 
 
 def get_variable_definition_coercer(

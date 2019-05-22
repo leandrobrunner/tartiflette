@@ -101,7 +101,7 @@ def get_argument_values(
     return coerced_values
 
 
-def variable_definition_coercer(
+async def variable_definition_coercer(
     executable_variable_definition: "ExecutableVariableDefinition",
     raw_variable_values: Dict[str, Any],
     input_coercer: Optional[Callable],
@@ -159,7 +159,7 @@ def variable_definition_coercer(
         )
 
     if has_value:
-        coerced_value, coerce_errors = input_coercer(value)
+        coerced_value, coerce_errors = await input_coercer(value)
         if coerce_errors:
             for coerce_error in coerce_errors:
                 coerce_error.message = (
@@ -171,7 +171,7 @@ def variable_definition_coercer(
     return UNDEFINED_VALUE
 
 
-def coerce_variable_definitions(
+async def coerce_variable_definitions(
     executable_variable_definitions: List["ExecutableVariableDefinition"],
     raw_variable_values: Dict[str, Any],
 ) -> Tuple[Dict[str, Any], List["GraphQLError"]]:
@@ -188,7 +188,7 @@ def coerce_variable_definitions(
     coerced_values: Dict[str, Any] = {}
 
     for executable_variable_definition in executable_variable_definitions:
-        coercion_result = executable_variable_definition.coercer(
+        coercion_result = await executable_variable_definition.coercer(
             raw_variable_values
         )
         if coercion_result is UNDEFINED_VALUE:

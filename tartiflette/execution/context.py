@@ -117,7 +117,7 @@ class ExecutionContext:
         yield {"data": {"name": "Hello"}}
 
 
-def build_execution_context(
+async def build_execution_context(
     schema: "GraphQLSchema",
     document: "DocumentNode",
     root_value: Optional[Any],
@@ -182,7 +182,7 @@ def build_execution_context(
             schema, operation.variable_definitions or []
         )
 
-        variable_values, variable_errors = coerce_variable_definitions(
+        variable_values, variable_errors = await coerce_variable_definitions(
             executable_variable_definitions, raw_variable_values or {}
         )
 

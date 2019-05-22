@@ -87,7 +87,7 @@ class Engine:
         if errors:
             return self._build_response(errors=errors)
 
-        execution_context, errors = build_execution_context(
+        execution_context, errors = await build_execution_context(
             self._schema,
             document,
             initial_value,
@@ -131,7 +131,7 @@ class Engine:
             yield self._build_response(errors=errors)
             return
 
-        execution_context, errors = build_execution_context(
+        execution_context, errors = await build_execution_context(
             self._schema,
             document,
             initial_value,
