@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 
 from tartiflette.constants import UNDEFINED_VALUE
 from tartiflette.types.exceptions import GraphQLError
+from tartiflette.types.exceptions.tartiflette import MultipleException
 from tartiflette.types.helpers import wraps_with_directives
 from tartiflette.types.helpers.definition import (
     get_wrapped_type,
@@ -15,6 +16,7 @@ from tartiflette.types.helpers.definition import (
     is_wrapping_type,
 )
 from tartiflette.utils.coercer_way import CoercerWay
+from tartiflette.utils.errors import is_coercible_exception, to_graphql_error
 from tartiflette.utils.values import is_invalid_value
 
 
@@ -213,7 +215,23 @@ async def enum_coercer(
         return CoercionResult(value=None)
 
     try:
-        return CoercionResult(value=enum.get_value(value))
+        enum_value = enum.get_enum_value(value)
+
+        # TODO: Wait, That's Illegal
+        kwargs["ctx"] = None
+        kwargs["argument_definition"] = None
+        kwargs["info"] = None
+
+        return CoercionResult(
+            value=(
+                await enum_value.directives[
+                    CoercerWay.INPUT
+                ](  # TODO: do better
+                    value, *args, **kwargs
+                )
+            )
+        )
+        # return CoercionResult(value=enum.get_value(value))
     except KeyError:
         # TODO: try to compute a suggestion list of valid values depending
         # on the invalid value sent and returns it as error sub message
@@ -287,7 +305,9 @@ async def input_object_coercer(
         else:
             coerced_field_value, coerced_field_errors = await input_field_coercers[
                 field_name
-            ](node, field_value, path=Path(path, field_name))
+            ](
+                node, field_value, path=Path(path, field_name)
+            )
             if coerced_field_errors:
                 errors.extend(coerced_field_errors)
             elif not errors:
@@ -400,20 +420,53 @@ async def non_null_coercer(
     return await inner_coercer(node, value, path=path)
 
 
-# async def _input_directive_runner(
-#     directives,
-#     coercers,
-#     # schema_type: "GraphQLType",
-#     # inner_coercer: Callable,
-#     node: Optional["Node"],
-#     value: Any,
-#     *args,
-#     path: Optional["Path"] = None,
-#     **kwargs,
-# ) -> "CoercionResult":
-#     return await directives(
-#         await coercers(node, value, *args, path=path, **kwargs), *args, **kwargs
-#     )
+async def input_directive_coercer(
+    directives,
+    coercers,
+    # schema_type: "GraphQLType",
+    # inner_coercer: Callable,
+    node: Optional["Node"],
+    value: Any,
+    *args,
+    path: Optional["Path"] = None,
+    **kwargs,
+) -> "CoercionResult":
+    result = await coercers(node, value, *args, path=path, **kwargs)
+
+    if result is UNDEFINED_VALUE:
+        return UNDEFINED_VALUE
+
+    value, errors = result
+    if errors:
+        return result
+
+    # TODO: Wait, That's Illegal
+    kwargs["ctx"] = None
+    kwargs["argument_definition"] = None
+    kwargs["info"] = None
+
+    try:
+        return CoercionResult(value=await directives(value, *args, **kwargs))
+    except Exception as raw_exception:
+        return CoercionResult(
+            errors=[
+                coercion_error(
+                    str(raw_exception),
+                    node,
+                    path,
+                    original_error=(
+                        raw_exception
+                        if not is_coercible_exception(raw_exception)
+                        else None
+                    ),
+                )
+                for raw_exception in (
+                    raw_exception.exceptions
+                    if isinstance(raw_exception, MultipleException)
+                    else [raw_exception]
+                )
+            ]
+        )
 
 
 def get_variable_definition_coercer(
@@ -430,6 +483,16 @@ def get_variable_definition_coercer(
     :rtype: TODO:
     """
     wrapped_type = get_wrapped_type(schema_type)
+
+    wrapped_type_directives = getattr(
+        wrapped_type, "directives_definition", None
+    )
+    directives_definition = (
+        wrapped_type_directives
+        if directives_definition is None
+        else directives_definition + wrapped_type_directives
+    )
+
     if is_scalar_type(wrapped_type):
         coercer = partial(scalar_coercer, wrapped_type)
     elif is_enum_type(wrapped_type):
@@ -440,8 +503,7 @@ def get_variable_definition_coercer(
             wrapped_type,
             {
                 name: get_variable_definition_coercer(
-                    argument.graphql_type,
-                    argument.directives_definition
+                    argument.graphql_type, argument.directives_definition
                 )
                 for name, argument in wrapped_type.arguments.items()
             },
@@ -461,12 +523,12 @@ def get_variable_definition_coercer(
     for wrapper_coercer in wrapper_coercers[::-1]:
         coercer = partial(wrapper_coercer, coercer)
 
-    # if directives_definition:
-    #     directives = wraps_with_directives(
-    #         directives_definition=directives_definition,
-    #         directive_hook="on_post_input_coercion",
-    #     )
-    #     if directives:
-    #         coercer = partial(_input_directive_runner, directives, coercer)
+    if directives_definition:
+        directives = wraps_with_directives(
+            directives_definition=directives_definition,
+            directive_hook="on_post_input_coercion",
+        )
+        if directives:
+            coercer = partial(input_directive_coercer, directives, coercer)
 
     return coercer

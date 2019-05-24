@@ -131,6 +131,16 @@ class GraphQLEnumType(GraphQLType):
         """
         return self._value_map[name].value
 
+    def get_enum_value(self, name: str) -> "GraphQLEnumValue":
+        """
+        TODO:
+        :param name: TODO:
+        :type name: TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return self._value_map[name]
+
     # Introspection Attribute
     @property
     def kind(self) -> str:

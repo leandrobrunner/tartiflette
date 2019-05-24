@@ -1,3 +1,5 @@
+import asyncio
+
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from tartiflette.constants import UNDEFINED_VALUE
@@ -162,7 +164,7 @@ async def variable_definition_coercer(
         coerced_value, coerce_errors = await input_coercer(value)
         if coerce_errors:
             for coerce_error in coerce_errors:
-                coerce_error.message = (
+                coerce_error.message = (  # TODO: incase of error raised in directives, message will be added? Is it ok?
                     f"Variable < ${var_name} > got invalid value "
                     f"< {value} >; {coerce_error.message}"
                 )
@@ -184,17 +186,24 @@ async def coerce_variable_definitions(
     :return: TODO:
     :rtype: TODO:
     """
+    results = await asyncio.gather(
+        *[
+            executable_variable_definition.coercer(raw_variable_values)
+            for executable_variable_definition in executable_variable_definitions
+        ],
+        return_exceptions=True,
+    )
+
     coercion_errors: List["GraphQLError"] = []
     coerced_values: Dict[str, Any] = {}
 
-    for executable_variable_definition in executable_variable_definitions:
-        coercion_result = await executable_variable_definition.coercer(
-            raw_variable_values
-        )
-        if coercion_result is UNDEFINED_VALUE:
+    for executable_variable_definition, result in zip(
+        executable_variable_definitions, results
+    ):
+        if result is UNDEFINED_VALUE:
             continue
 
-        value, errors = coercion_result
+        value, errors = result
         if errors:
             coercion_errors.extend(errors)
         else:

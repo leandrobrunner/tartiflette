@@ -46,6 +46,14 @@ class BooleanValueNode(ValueNode):
             self.location,
         )
 
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return str(self.value).lower()
+
 
 class EnumValueNode(ValueNode):
     """
@@ -89,6 +97,14 @@ class EnumValueNode(ValueNode):
             self.value,
             self.location,
         )
+
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return str(self.value)
 
 
 class FloatValueNode(ValueNode):
@@ -134,6 +150,14 @@ class FloatValueNode(ValueNode):
             self.location,
         )
 
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return str(self.value)
+
 
 class IntValueNode(ValueNode):
     """
@@ -178,6 +202,14 @@ class IntValueNode(ValueNode):
             self.location,
         )
 
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return str(self.value)
+
 
 class NullValueNode(ValueNode):
     """
@@ -214,6 +246,14 @@ class NullValueNode(ValueNode):
         :rtype: str
         """
         return "NullValueNode(location=%r)" % self.location
+
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return "null"
 
 
 class StringValueNode(ValueNode):
@@ -258,6 +298,14 @@ class StringValueNode(ValueNode):
             self.value,
             self.location,
         )
+
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return self.value
 
 
 class ListValueNode(ValueNode):
@@ -304,6 +352,14 @@ class ListValueNode(ValueNode):
             self.values,
             self.location,
         )
+
+    def __str__(self) -> str:
+        """
+        TODO:
+        :return: TODO:
+        :rtype: TODO:
+        """
+        return "[" + ", ".join([str(value) for value in self.values]) + "]"
 
 
 class ObjectFieldNode(Node):
