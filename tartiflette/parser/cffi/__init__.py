@@ -8,7 +8,7 @@ from cffi import FFI
 from tartiflette.types.exceptions.tartiflette import GraphQLSyntaxError
 from tartiflette.types.location import Location
 
-## TODO automatize read from headers files
+## TODO: automatize read from headers files
 
 CDEFS_LIBGRAPHQL = """
 /**
@@ -569,7 +569,7 @@ _LIBGRAPHQL_TYPE_TO_CLASS = {
 _FFI = FFI()
 _FFI.cdef(CDEFS_LIBGRAPHQL)
 
-# TODO use importlib.resource in Python3.7
+# TODO: use importlib.resource in Python3.7
 _LIB_DIR = os.path.dirname(__file__)
 try:
     _LIB = _FFI.dlopen("%s/libgraphqlparser.so" % _LIB_DIR)
@@ -664,7 +664,7 @@ class LibGraphqlParser:
         )
 
         if errors[0] != self._ffi.NULL:
-            # TODO Parse libgraphql error string and fill location
+            # TODO: Parse libgraphql error string and fill location
             e = GraphQLSyntaxError(
                 self._ffi.string(errors[0]).decode("UTF-8", "replace")
             )

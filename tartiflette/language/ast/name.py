@@ -45,8 +45,8 @@ class NameNode(Node):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the name.
+        :return: a human-readable representation of the name
+        :rtype: str
         """
         return self.value

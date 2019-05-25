@@ -8,26 +8,12 @@ from tartiflette.types.scalar import GraphQLScalarType
 from tartiflette.types.union import GraphQLUnionType
 
 
-def get_named_type(schema_type: "GraphQLType") -> "GraphQLType":
-    """
-    TODO:
-    :param schema_type: TODO:
-    :type schema_type: GraphQLType
-    :return: TODO:
-    :rtype: GraphQLType
-    """
-    inner_type = schema_type
-    while is_wrapping_type(inner_type):
-        inner_type = inner_type.wrapped_type
-    return inner_type
-
-
 def get_wrapped_type(schema_type: "GraphQLType") -> "GraphQLType":
     """
-    TODO:
-    :param schema_type: TODO:
+    Unwraps the schema type and to return the inner type.
+    :param schema_type: schema type to unwrap
     :type schema_type: GraphQLType
-    :return: TODO:
+    :return: the unwrapped inner schema type
     :rtype: GraphQLType
     """
     inner_type = schema_type

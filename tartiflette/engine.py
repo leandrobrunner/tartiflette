@@ -26,25 +26,36 @@ class Engine:
         self,
         sdl: Union[str, List[str]],
         schema_name: str = "default",
-        error_coercer: Callable[[Exception], dict] = default_error_coercer,
+        error_coercer: Callable[
+            [Exception], Dict[str, Any]
+        ] = default_error_coercer,
         custom_default_resolver: Optional[Callable] = None,
         exclude_builtins_scalars: Optional[List[str]] = None,
         modules: Optional[Union[str, List[str]]] = None,
     ) -> None:
         """
-        TODO:
-        :param sdl: TODO:
-        :param schema_name: TODO:
-        :param error_coercer: TODO:
-        :param custom_default_resolver: TODO:
-        :param exclude_builtins_scalars: TODO:
-        :param modules: TODO:
-        :type sdl: TODO:
-        :type schema_name: TODO:
-        :type error_coercer: TODO:
-        :type custom_default_resolver: TODO:
-        :type exclude_builtins_scalars: TODO:
-        :type modules: TODO:
+        Create an engine by analyzing the SDL and connecting it with the
+        imported Resolver, Mutation, Subscription, Directive and Scalar linking
+        them through the schema name.
+        :param sdl: path or list of path to the files / directories containing
+        the SDL
+        :param schema_name: name of the SDL
+        :param error_coercer: callable in charge of transforming a couple
+        Exception/error into an error dictionary
+        :param custom_default_resolver: callable that will replace the builtin
+        default_resolver (called as resolver for each UNDECORATED field)
+        :param exclude_builtins_scalars: list of string containing the names of
+        the builtin scalar you don't want to be automatically included, usually
+        it's Date, DateTime or Time scalars
+        :param modules: list of string containing the name of the modules you
+        want the engine to import, usually this modules contains your
+        Resolvers, Directives, Scalar or Subscription code
+        :type sdl: Union[str, List[str]]
+        :type schema_name: str
+        :type error_coercer: Callable[[Exception], Dict[str, Any]]
+        :type custom_default_resolver: Optional[Callable]
+        :type exclude_builtins_scalars: Optional[List[str]]
+        :type modules: Optional[Union[str, List[str]]]
         """
         if isinstance(modules, str):
             modules = [modules]
@@ -61,26 +72,28 @@ class Engine:
 
     async def execute(
         self,
-        query: str,
+        query: Union[str, bytes],
         operation_name: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[Any] = None,
         variables: Optional[Dict[str, Any]] = None,
         initial_value: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
-        TODO:
-        :param query: TODO:
-        :param operation_name: TODO:
-        :param context: TODO:
-        :param variables: TODO:
-        :param initial_value: TODO:
-        :type query: TODO:
-        :type operation_name: TODO:
-        :type context: TODO:
-        :type variables: TODO:
-        :type initial_value: TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Parses and executes a GraphQL query/mutation request.
+        :param query: the GraphQL request / query as UTF8-encoded string
+        :param operation_name: the operation name to execute
+        :param context: value that can contain everything you need and that
+        will be accessible from the resolvers
+        :param variables: the variables used in the GraphQL request
+        :param initial_value: an initial value corresponding to the root type
+        being executed
+        :type query: Union[str, bytes]
+        :type operation_name: Optional[str]
+        :type context: Optional[Any]
+        :type variables: Optional[Dict[str, Any]]
+        :type initial_value: Optional[Any]
+        :return: computed response corresponding to the request
+        :rtype: Dict[str, Any]
         """
         print()
         document, errors = parse_and_validate_query(query)
@@ -105,27 +118,30 @@ class Engine:
 
     async def subscribe(
         self,
-        query: str,
+        query: Union[str, bytes],
         operation_name: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        context: Optional[Any] = None,
         variables: Optional[Dict[str, Any]] = None,
         initial_value: Optional[Any] = None,
     ) -> AsyncIterable[Dict[str, Any]]:
         """
-        TODO:
-        :param query: TODO:
-        :param operation_name: TODO:
-        :param context: TODO:
-        :param variables: TODO:
-        :param initial_value: TODO:
-        :type query: TODO:
-        :type operation_name: TODO:
-        :type context: TODO:
-        :type variables: TODO:
-        :type initial_value: TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Parses and executes a GraphQL subcription request.
+        :param query: the GraphQL request / query as UTF8-encoded string
+        :param operation_name: the operation name to execute
+        :param context: value that can contain everything you need and that
+        will be accessible from the resolvers
+        :param variables: the variables used in the GraphQL request
+        :param initial_value: an initial value corresponding to the root type
+        being executed
+        :type query: Union[str, bytes]
+        :type operation_name: Optional[str]
+        :type context: Optional[Any]
+        :type variables: Optional[Dict[str, Any]]
+        :type initial_value: Optional[Any]
+        :return: computed response corresponding to the request
+        :rtype: AsyncIterable[Dict[str, Any]]
         """
+        # pylint: disable=too-many-locals
         document, errors = parse_and_validate_query(query)
         if errors:
             yield self._build_response(errors=errors)

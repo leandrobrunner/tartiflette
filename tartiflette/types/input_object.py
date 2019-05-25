@@ -60,7 +60,7 @@ class GraphQLInputObjectType(GraphQLType):
 
     def bake(self, schema: "GraphQLSchema") -> None:
         super().bake(schema)
-        self.directives_definition = get_directive_instances(
+        self.directives_definition = get_directive_instances(  # pylint: disable=attribute-defined-outside-init
             self._directives, self._schema
         )
         self._directives_implementations = {

@@ -51,9 +51,9 @@ class ListTypeNode(TypeNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return f"[{self.type}]"
 
@@ -106,8 +106,8 @@ class NonNullTypeNode(TypeNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return f"{self.type}!"

@@ -18,7 +18,7 @@ class SelectionSetNode(Node):
         """
         :param selections: selections of the selection set
         :param location: location of the selection set in the query/SDL
-        :type selections: List["SelectionNode"]
+        :type selections: List[SelectionNode]
         :type location: Optional[Location]
         """
         self.selections = selections

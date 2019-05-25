@@ -48,9 +48,9 @@ class BooleanValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return str(self.value).lower()
 
@@ -100,9 +100,9 @@ class EnumValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return str(self.value)
 
@@ -152,9 +152,9 @@ class FloatValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return str(self.value)
 
@@ -204,9 +204,9 @@ class IntValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return str(self.value)
 
@@ -249,9 +249,9 @@ class NullValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return "null"
 
@@ -301,9 +301,9 @@ class StringValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return self.value
 
@@ -355,9 +355,9 @@ class ListValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return "[" + ", ".join([str(value) for value in self.values]) + "]"
 
@@ -418,9 +418,9 @@ class ObjectFieldNode(Node):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return f"{self.name}: {self.value}"
 
@@ -474,8 +474,8 @@ class ObjectValueNode(ValueNode):
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the value.
+        :return: a human-readable representation of the value
+        :rtype: str
         """
         return "{" + ", ".join([str(field) for field in self.fields]) + "}"

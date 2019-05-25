@@ -33,6 +33,7 @@ def get_argument_values(
     :return: TODO:
     :rtype: TODO:
     """
+    # pylint: disable=too-many-locals,too-many-branches
     argument_nodes = node.arguments
     if not argument_definitions or argument_nodes is None:
         return {}
@@ -43,9 +44,7 @@ def get_argument_values(
         for argument_node in argument_nodes
     }
 
-    for index, argument_definition in enumerate(
-        list(argument_definitions.values())
-    ):
+    for argument_definition in list(argument_definitions.values()):
         name = argument_definition.name
         arg_type = argument_definition.get_gql_type()
         argument_node = argument_nodes_map.get(name)
@@ -106,19 +105,20 @@ def get_argument_values(
 async def variable_definition_coercer(
     executable_variable_definition: "ExecutableVariableDefinition",
     raw_variable_values: Dict[str, Any],
-    input_coercer: Optional[Callable],
+    input_coercer: Callable,
 ) -> Union["CoercionResult", "UNDEFINED_VALUE"]:
     """
-    TODO:
-    :param executable_variable_definition: TODO:
-    :param raw_variable_values: TODO:
-    :param input_coercer: TODO:
-    :type executable_variable_definition: TODO:
-    :type raw_variable_values: TODO:
-    :type input_coercer: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of the variable definition.
+    :param executable_variable_definition: the variable definition to treat
+    :param raw_variable_values: the raw variables values to coerce
+    :param input_coercer: callable to use to compute the variable value
+    :type executable_variable_definition: ExecutableVariableDefinition
+    :type raw_variable_values: Dict[str, Any]
+    :type input_coercer: Callable
+    :return: the computed value of the variable definition
+    :rtype: Union[CoercionResult, UNDEFINED_VALUE]
     """
+    # pylint: disable=too-many-locals
     var_name = executable_variable_definition.name
     var_type = executable_variable_definition.graphql_type
 
@@ -164,7 +164,8 @@ async def variable_definition_coercer(
         coerced_value, coerce_errors = await input_coercer(value)
         if coerce_errors:
             for coerce_error in coerce_errors:
-                coerce_error.message = (  # TODO: incase of error raised in directives, message will be added? Is it ok?
+                # TODO: incase of error raised in directives, message will be added? Is it ok?
+                coerce_error.message = (
                     f"Variable < ${var_name} > got invalid value "
                     f"< {value} >; {coerce_error.message}"
                 )
@@ -175,16 +176,16 @@ async def variable_definition_coercer(
 
 async def coerce_variable_definitions(
     executable_variable_definitions: List["ExecutableVariableDefinition"],
-    raw_variable_values: Dict[str, Any],
+    raw_variable_values: Optional[Dict[str, Any]],
 ) -> Tuple[Dict[str, Any], List["GraphQLError"]]:
     """
-    TODO:
-    :param executable_variable_definitions: TODO:
-    :param raw_variable_values: TODO:
-    :type executable_variable_definitions: TODO:
-    :type raw_variable_values: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Returns the computed valuse of the variables.
+    :param executable_variable_definitions: the variable definitions to treat
+    :param raw_variable_values: the raw variables values to coerce
+    :type executable_variable_definitions: List[ExecutableVariableDefinition]
+    :type raw_variable_values: Optional[Dict[str, Any]]
+    :return: the computed values of the variables
+    :rtype: Tuple[Dict[str, Any], List["GraphQLError"]]
     """
     results = await asyncio.gather(
         *[

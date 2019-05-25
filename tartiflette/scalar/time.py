@@ -21,6 +21,6 @@ class ScalarTime:
 
         try:
             return datetime.strptime(ast.value, "%H:%M:%S")
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         return UNDEFINED_VALUE

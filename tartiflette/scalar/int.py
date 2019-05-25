@@ -35,6 +35,6 @@ class ScalarInt:
             value = int(ast.value)
             if _MIN_INT <= value <= _MAX_INT:
                 return value
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         return UNDEFINED_VALUE

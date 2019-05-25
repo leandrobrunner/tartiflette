@@ -28,6 +28,6 @@ class ScalarFloat:
 
         try:
             return float(ast.value)
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         return UNDEFINED_VALUE

@@ -61,10 +61,18 @@ class Location:
             self.column_end,
         )
 
+    def __str__(self) -> str:
+        """
+        Returns a human-readable representation of the location.
+        :return: a human-readable representation of the location
+        :rtype: str
+        """
+        return f"[{self.line}:{self.column}]"
+
     def collect_value(self) -> Dict[str, int]:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns the location as a dictionary.
+        :return: the location as a dictionary
+        :rtype: Dict[str, int]
         """
         return {"line": self.line, "column": self.column}

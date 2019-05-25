@@ -10,7 +10,7 @@ from tartiflette.utils.value_from_ast import value_from_ast
 
 class ExecutableVariableDefinition:
     """
-    TODO:
+    Node representing a GraphQL executable variable definition.
     """
 
     __slots__ = (
@@ -30,16 +30,16 @@ class ExecutableVariableDefinition:
         definition: "VariableDefinitionNode",
     ) -> None:
         """
-        :param name: TODO:
-        :param graphql_type: TODO:
-        :param default_value: TODO:
-        :param coercer: TODO:
-        :param definition_node: TODO:
-        :type name: TODO:
-        :type graphql_type: TODO:
-        :type default_value: TODO:
-        :type coercer: TODO:
-        :type definition_node: TODO:
+        :param name: the name of the variable
+        :param graphql_type: the GraphQLType expected for the variable value
+        :param default_value: the default value of the variable
+        :param coercer: callable to use when coercing the user input value
+        :param definition_node: the variable definition AST node
+        :type name: str
+        :type graphql_type: GraphQLType
+        :type default_value: Any
+        :type coercer: Callable
+        :type definition_node: VariableDefinitionNode
         """
         self.name = name
         self.graphql_type = graphql_type
@@ -52,13 +52,14 @@ def variable_definition_node_to_executable(
     schema: "GraphQLSchema", variable_definition_node: "VariableDefinitionNode"
 ) -> "ExecutableVariableDefinition":
     """
-    TODO:
-    :param schema: TODO:
-    :param variable_definition_node: TODO:
-    :type schema: TODO:
-    :type variable_definition_node: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Converts a variable definition AST node into an executable variable
+    definition.
+    :param schema: the GraphQLType expected for the variable value
+    :param variable_definition_node: the variable definition AST node to treat
+    :type schema: GraphQLSchema
+    :type variable_definition_node: VariableDefinitionNode
+    :return: an executable variable definition
+    :rtype: ExecutableVariableDefinition
     """
     graphql_type = schema_type_from_ast(schema, variable_definition_node.type)
     return ExecutableVariableDefinition(

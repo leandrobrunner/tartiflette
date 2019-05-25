@@ -51,6 +51,7 @@ def value_from_ast(
     :return: TODO:
     :rtype: TODO:
     """
+    # pylint: disable=too-many-locals,too-many-return-statements,too-many-branches
     if not value_node:
         # When there is no node, then there is also no defined value
         return UNDEFINED_VALUE
@@ -147,7 +148,7 @@ def value_from_ast(
             value = schema_type.parse_literal(value_node)
             if not is_invalid_value(value):
                 return value
-        except Exception:
+        except Exception:  # pylint: disable=broad-except
             pass
         return UNDEFINED_VALUE
 

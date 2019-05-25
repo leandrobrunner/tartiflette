@@ -19,7 +19,8 @@ __all__ = ["build_execution_context"]
 
 class ExecutionContext:
     """
-    TODO:
+    Utility class containing all the information needed to run an end-to-end
+    GraphQL request.
     """
 
     def __init__(
@@ -33,21 +34,24 @@ class ExecutionContext:
         variable_values: Optional[Dict[str, Any]],
     ) -> None:
         """
-        TODO:
-        :param schema: TODO:
-        :param build_response: TODO:
-        :param fragments: TODO:
-        :param operation: TODO:
-        :param context: TODO:
-        :param root_value: TODO:
-        :param variable_values: TODO:
-        :type schema: TODO:
-        :type build_response: TODO:
-        :type fragments: TODO:
-        :type operation: TODO:
-        :type context: TODO:
-        :type root_value: TODO:
-        :type variable_values: TODO:
+        :param schema: the GraphQLSchema schema instance linked to the engine
+        :param build_response: callable in charge of returning the formatted
+        GraphQL response
+        :param fragments: the dictionary of fragment definition AST node
+        contained in the request
+        :param operation: the executable operation to execute
+        :param context: value that can contain everything you need and that
+        will be accessible from the resolvers
+        :param root_value: an initial value corresponding to the root type
+        being executed
+        :param variable_values: the variables used in the GraphQL request
+        :type schema: GraphQLSchema
+        :type build_response: Callable
+        :type fragments: Dict[str, FragmentDefinitionNode]
+        :type operation: ExecutableOperationNode
+        :type context: Optional[Any]
+        :type root_value: Optional[Any]
+        :type variable_values: Optional[Dict[str, Any]]
         """
         self.schema = schema
         self.build_response = build_response
@@ -58,7 +62,7 @@ class ExecutionContext:
         self.variable_values = variable_values
         self.errors: List["GraphQLError"] = []
 
-        # TODO: retrocompatibility
+        # TODO: backward compatibility old execution style
         self.is_introspection: bool = False
 
     def add_error(
@@ -68,15 +72,13 @@ class ExecutionContext:
         locations: Optional[List["Location"]] = None,
     ) -> None:
         """
-        TODO:
-        :param raw_exception: TODO:
-        :param path: TODO:
-        :param locations: TODO:
-        :type raw_exception: TODO:
-        :type path: TODO:
-        :param locations: TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Adds the contents of an exception to the known execution errors.
+        :param raw_exception: the raw exception to treat
+        :param path: the path where the raw exception occurred
+        :param locations: the locations linked to the raw exception
+        :type raw_exception: Union[GraphQLError, MultipleException, Exception]
+        :type path: Optional[List[str]]
+        :param locations: Optional[List["Location"]]
         """
         exceptions = (
             raw_exception.exceptions
@@ -101,9 +103,9 @@ class ExecutionContext:
 
     async def execute(self) -> Dict[str, Any]:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Runs the execution of the executable operation.
+        :return: the GraphQL response linked to the operation execution
+        :rtype: Dict[str, Any]
         """
         return await execute_operation(self)
 
@@ -127,24 +129,28 @@ async def build_execution_context(
     build_response: Callable,
 ) -> Tuple[Optional["ExecutionContext"], Optional[List["GraphQLError"]]]:
     """
-    TODO:
-    :param schema: TODO:
-    :param document: TODO:
-    :param root_value: TODO:
-    :param context: TODO:
-    :param raw_variable_values: TODO:
-    :param operation_name: TODO:
-    :param build_response: TODO:
-    :type schema: TODO:
-    :type document: TODO:
-    :type root_value: TODO:
-    :type context: TODO:
-    :type raw_variable_values: TODO:
-    :type operation_name: TODO:
-    :type build_response: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Factory function to build and return an ExecutionContext instance.
+    :param schema: the GraphQLSchema schema instance linked to the engine
+    :param document: the DocumentNode instance linked to the GraphQL request
+    :param root_value: an initial value corresponding to the root type being
+    executed
+    :param context: value that can contain everything you need and that will be
+    accessible from the resolvers
+    :param raw_variable_values: the variables used in the GraphQL request
+    :param operation_name: the operation name to execute
+    :param build_response: callable in charge of returning the formatted
+    GraphQL response
+    :type schema: GraphQLSchema
+    :type document: DocumentNode
+    :type root_value: Optional[Any]
+    :type context: Optional[Any]
+    :type raw_variable_values: Optional[Dict[str, Any]]
+    :type operation_name: str
+    :type build_response: Callable
+    :return: an ExecutionContext instance
+    :rtype: Tuple[Optional[ExecutionContext], Optional[List[GraphQLError]]]
     """
+    # pylint: disable=too-many-locals
     errors: List["GraphQLError"] = []
     operation: Optional["OperationDefinitionNode"] = None
     fragments: Dict[str, "FragmentDefinitionNode"] = {}

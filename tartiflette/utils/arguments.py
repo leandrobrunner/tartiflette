@@ -12,6 +12,7 @@ from tartiflette.utils.errors import to_graphql_error
 async def argument_coercer(
     argument_definition, args, ctx, info, input_coercer=None
 ):
+    # pylint: disable=unused-argument
     value = UNDEFINED_VALUE
     try:
         value = args[argument_definition.name]

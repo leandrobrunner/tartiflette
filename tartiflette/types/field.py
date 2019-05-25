@@ -16,6 +16,8 @@ class GraphQLField:
     A field is used in Object, Interfaces as its constituents.
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(
         self,
         name: str,

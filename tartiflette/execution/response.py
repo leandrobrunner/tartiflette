@@ -8,15 +8,16 @@ def build_response(
     errors: Optional[List["GraphQLError"]] = None,
 ) -> Dict[str, Any]:
     """
-    TODO:
-    :param error_coercer: TODO:
-    :param data: TODO:
-    :param errors: TODO:
-    :type error_coercer: TODO:
-    :type data: TODO:
-    :type errors: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Returns and formats the data and errors into a proper GraphQL response.
+    :param error_coercer: callable in charge of transforming a couple
+    Exception/error into an error dictionary
+    :param data: the data from fields execution
+    :param errors: the errors encountered during the request execution
+    :type error_coercer: Callable
+    :type data: Optional[Dict[str, Any]]
+    :type errors: Optional[List[GraphQLError]]
+    :return: a GraphQL response
+    :rtype: Dict[str, Any]
     """
     coerced_errors = (
         [error_coercer(error) for error in errors] if errors else None

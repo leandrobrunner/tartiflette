@@ -1,5 +1,5 @@
 from functools import lru_cache, partial
-from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from tartiflette.execution.nodes.field import ExecutableFieldNode
 from tartiflette.execution.nodes.variable_definition import (
@@ -8,7 +8,6 @@ from tartiflette.execution.nodes.variable_definition import (
 from tartiflette.execution.values import get_argument_values
 from tartiflette.language.ast import (
     FieldNode,
-    FragmentDefinitionNode,
     FragmentSpreadNode,
     InlineFragmentNode,
 )
@@ -33,11 +32,11 @@ def parse_and_validate_query(
     query: Union[str, bytes]
 ) -> Tuple[Optional["DocumentNode"], Optional[List["GraphQLError"]]]:
     """
-    TODO:
-    :param query: TODO:
-    :type query: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Analyzes & validates a query by converting it to a DocumentNode.
+    :param query: the GraphQL request / query as UTF8-encoded string
+    :type query: Union[str, bytes]
+    :return: a DocumentNode representing the query
+    :rtype: Tuple[Optional[DocumentNode], Optional[List[GraphQLError]]]
     """
     try:
         document: "DocumentNode" = parse_to_document(query)
@@ -58,30 +57,60 @@ def parse_and_validate_query(
 def _does_fragment_condition_match(
     schema: "GraphQLSchema",
     fragment_definition: Union["FragmentDefinitionNode", "InlineFragmentNode"],
-    schema_type: "GraphQLType",
+    graphql_type: "GraphQLType",
 ) -> bool:
+    """
+    Determines if a AST node is applicable to the given GraphQLType.
+    :param schema: the GraphQLSchema schema instance linked to the engine
+    :param fragment_definition: AST node to check
+    :param graphql_type: GraphQLType that the AST node should comply with
+    :type schema: GraphQLSchema:
+    :type fragment_definition: Union[FragmentDefinitionNode, InlineFragmentNode]
+    :type graphql_type: GraphQLType
+    :return: whether or not the AST node is applicable to the given GraphQLType
+    :rtype: bool
+    """
     type_condition_node = fragment_definition.type_condition
     if not type_condition_node:
         return True
 
     conditional_type = schema_type_from_ast(schema, type_condition_node)
-    if conditional_type is schema_type:
+    if conditional_type is graphql_type:
         return True
 
-    return is_abstract_type(schema_type) and schema_type.is_possible_types(
+    return is_abstract_type(graphql_type) and graphql_type.is_possible_types(
         conditional_type
     )
 
 
 def _surround_with_collection_directives(
-    func: Callable, directives: list
+    func: Callable, directives: List[Dict[str, Any]]
 ) -> Callable:
+    """
+    Wraps the function with the provided directives.
+    :param func: the function to wrap
+    :param directives: the directives to wrap the function with
+    :type func: Callable
+    :type directives: List[Dict[str, Any]]
+    :return: the wrapped function
+    :rtype: Callable
+    """
     for directive in reversed(directives):
         func = partial(directive["callable"], directive["args"], func)
     return func
 
 
-async def _collect_directive(selection):
+async def _collect_directive(
+    selection: Union["FieldNode", "FragmentSpreadNode", "InlineFragmentNode"]
+) -> Union["FieldNode", "FragmentSpreadNode", "InlineFragmentNode"]:
+    """
+    An utility function which returns the selection AST node filled in and is
+    intended to be decorated by directives.
+    :param selection: the selection AST node filled in
+    :type selection: Union[FieldNode, FragmentSpreadNode, InlineFragmentNode]
+    :return: the selection AST node filled in
+    :rtype: Union[FieldNode, FragmentSpreadNode, InlineFragmentNode]
+    """
     return selection
 
 
@@ -90,6 +119,19 @@ async def _should_include_node(
     selection: Union["FieldNode", "FragmentSpreadNode", "InlineFragmentNode"],
     path: Optional[List[str]],
 ) -> bool:
+    """
+    Determines if a selection AST node should be included based on the
+     `on_***_collection` directive hooks (linked to the @include and @skip
+     directives).
+    :param execution_context: the instance of the global execution context
+    :param selection: the selection AST node to check
+    :param path: the path linked to the selection AST node
+    :type execution_context: ExecutionContext
+    :type selection: Union[FieldNode, FragmentSpreadNode, InlineFragmentNode]
+    :type path: Optional[List[str]]
+    :return: whether or not the selection AST node should be include
+    :rtype: bool
+    """
     if not selection.directives:
         return True
 
@@ -110,7 +152,7 @@ async def _should_include_node(
                 execution_context.context,
                 None,  # TODO: should be a "Info" instance
             )
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             execution_context.add_error(
                 e, path=path, locations=[directive_node.location]
             )
@@ -132,7 +174,7 @@ async def _should_include_node(
         )
     except SkipCollection:
         return False
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         execution_context.add_error(
             e, path=path, locations=[selection.location]
         )
@@ -150,6 +192,30 @@ async def collect_executables(
     path: Optional[List[str]] = None,
     parent: Optional["ExecutableFieldNode"] = None,
 ) -> Dict[str, "ExecutableFieldNode"]:
+    """
+    Go recursively through all selection sets to collect all the fields to
+    execute.
+    :param execution_context: the instance of the global execution context
+    :param runtime_type: the GraphQLObjectType linked to the selection set
+    :param selection_set: the selection set to look over
+    :param fields: a dictionary containing the collected fields
+    :param visited_fragments: a set containing the names of the fragments
+    already treated
+    :param type_condition: the type condition liked to the selection set
+    :param path: the path linked to the selection set
+    :param parent: the parent field of the selection set
+    :type execution_context: ExecutionContext
+    :type runtime_type: GraphQLObjectType
+    :type selection_set: SelectionSetNode
+    :type fields: Optional[Dict[str, ExecutableFieldNode]]
+    :type visited_fragments: Optional[Set[str]]
+    :type type_condition: Optional[str]
+    :type path: Optional[List[str]]
+    :type parent: Optional[ExecutableFieldNode]
+    :return: a dictionary containing the collected fields
+    :rtype: Dict[str, ExecutableFieldNode]
+    """
+    # pylint: disable=too-many-locals
     if fields is None:
         fields: Dict[str, "ExecutableFieldNode"] = {}
 
@@ -271,13 +337,14 @@ def collect_executable_variable_definitions(
     variable_definition_nodes: List["VariableDefinitionNode"],
 ) -> List["ExecutableVariableDefinition"]:
     """
-    TODO:
-    :param schema: TODO:
-    :param variable_definitions: TODO:
-    :type schema: TODO:
-    :type variable_definitions: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Go recursively through all variable definition AST nodes to convert them as
+    executable variable definition.
+    :param schema: the GraphQLSchema schema instance linked to the engine
+    :param variable_definitions: the list of variable definition AST to treat
+    :type schema: GraphQLSchema
+    :type variable_definitions: List[VariableDefinitionNode]
+    :return: a list of executable variable definition
+    :rtype: List[ExecutableVariableDefinition]
     """
     return [
         variable_definition_node_to_executable(

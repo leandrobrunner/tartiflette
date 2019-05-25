@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict
 
 
 class ExecutableOperationNode:
@@ -29,7 +29,7 @@ class ExecutableOperationNode:
         self.definition = definition
         self.allow_parallelization: bool = operation_type != "mutation"
 
-        # TODO: retrocompatibility old execution style
+        # TODO: backward compatibility old execution style
         self.children = fields
 
     def __repr__(self) -> str:

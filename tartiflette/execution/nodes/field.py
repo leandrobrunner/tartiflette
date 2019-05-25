@@ -2,6 +2,7 @@ import asyncio
 
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Union
 
+from tartiflette.execution.values import get_argument_values
 from tartiflette.executors.types import Info
 from tartiflette.types.exceptions import GraphQLError
 from tartiflette.types.exceptions.tartiflette import SkipExecution
@@ -13,6 +14,8 @@ class ExecutableFieldNode:
     """
     Node representing a GraphQL executable field.
     """
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(
         self,
@@ -66,7 +69,7 @@ class ExecutableFieldNode:
         self.directives = directives if directives is not None else []
         self.definitions: List["FieldNode"] = []
 
-        # TODO: retrocompatibility old execution style
+        # TODO: backward compatibility old execution style
         self.children = fields
         self.field_executor = resolver
         self.marshalled: Dict[str, Any] = {}
@@ -97,6 +100,7 @@ class ExecutableFieldNode:
             )
         )
 
+    # TODO: backward compatibility old execution style
     @property
     def cant_be_null(self) -> bool:
         return self.field_executor.cant_be_null
@@ -154,7 +158,7 @@ class ExecutableFieldNode:
     ) -> None:
         coroutz = []
         if self.shall_produce_list:
-            # TODO Better manage of None values here. (Should be transformed by coerce)
+            # TODO: Better manage of None values here. (Should be transformed by coerce)
             if isinstance(result, list) and isinstance(coerced, list):
                 for index, raw in enumerate(result):
                     raw_typename = get_typename(raw)
@@ -192,8 +196,6 @@ class ExecutableFieldNode:
             location=self.location,
             execution_ctx=execution_context,
         )
-
-        from tartiflette.execution import get_argument_values
 
         return self.subscribe(
             initial_value,

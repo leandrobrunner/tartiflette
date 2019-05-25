@@ -16,40 +16,40 @@ from tartiflette.types.helpers.definition import (
     is_wrapping_type,
 )
 from tartiflette.utils.coercer_way import CoercerWay
-from tartiflette.utils.errors import is_coercible_exception, to_graphql_error
+from tartiflette.utils.errors import is_coercible_exception
 from tartiflette.utils.values import is_invalid_value
 
 
 class Path:
     """
-    TODO:
+    Representations of the path traveled during the coercion.
     """
 
     __slots__ = ("prev", "key")
 
     def __init__(self, prev: Optional["Path"], key: Union[str, int]) -> None:
         """
-        :param prev: TODO:
-        :param key: TODO:
-        :type prev: TODO:
-        :type key: TODO:
+        :param prev: the previous value of the path
+        :param key: the current value of the path
+        :type prev: Optional[Path]
+        :type key: Union[str, int]
         """
         self.prev = prev
         self.key = key
 
     def __repr__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns the representation of an Path instance.
+        :return: the representation of an Path instance
+        :rtype: str
         """
         return "Path(prev=%r, key=%r)" % (self.prev, self.key)
 
     def __str__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns a human-readable representation of the full path.
+        :return: a human-readable representation of the full path
+        :rtype: str
         """
         path_str = ""
         current_path = self
@@ -65,7 +65,7 @@ class Path:
 
 class CoercionResult:
     """
-    TODO:
+    Represents the result of a coercion.
     """
 
     __slots__ = ("value", "errors")
@@ -76,10 +76,10 @@ class CoercionResult:
         errors: Optional[List["GraphQLError"]] = None,
     ) -> None:
         """
-        :param value: TODO:
-        :param errors: TODO:
-        :type value: TODO:
-        :type errors: TODO:
+        :param value: the computed value
+        :param errors: the errors encountered
+        :type value: Optional[Any]
+        :type errors: Optional[List[GraphQLError]]
         """
         # TODO: if errors `value` shouldn't it be "UNDEFINED_VALUE" instead?
         self.value = value if not errors else None
@@ -87,9 +87,9 @@ class CoercionResult:
 
     def __repr__(self) -> str:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns the representation of a CoercionResult instance.
+        :return: the representation of a CoercionResult instance
+        :rtype: str
         """
         return "CoercionResult(value=%r, errors=%r)" % (
             self.value,
@@ -98,30 +98,36 @@ class CoercionResult:
 
     def __iter__(self) -> Iterable:
         """
-        TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns an iterator over the computed value and errors encountered to
+        allow unpacking the value like a tuple.
+        :return: an iterator over the computed value and errors encountered
+        :rtype: Iterable
         """
         yield from [self.value, self.errors]
 
 
 def coercion_error(
-    message, node=None, path=None, sub_message=None, original_error=None
-):
+    message: str,
+    node: Optional["Node"] = None,
+    path: Optional["Path"] = None,
+    sub_message: Optional[str] = None,
+    original_error: Optional[Exception] = None,
+) -> "GraphQLError":
     """
-    TODO:
-    :param message: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param sub_message: TODO:
-    :param original_error: TODO:
-    :type message: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type sub_message: TODO:
-    :type original_error: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Returns a GraphQLError whose message is formatted according to the message,
+    path, and sub-message filled in.
+    :param message: the message of the error
+    :param node: the AST node linked to the error
+    :param path: the path where the error occurred
+    :param sub_message: the sub-message to append
+    :param original_error: the original raw exception
+    :type message: str
+    :type node: Optional[Node]
+    :type path: Optional[Path]
+    :type sub_message: Optional[str]
+    :type original_error: Optional[Exception]
+    :return: a GraphQLError
+    :rtype: GraphQLError
     """
     return GraphQLError(
         message
@@ -135,29 +141,26 @@ def coercion_error(
 
 async def scalar_coercer(
     scalar: "GraphQLScalarType",
-    node: Optional["Node"],
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
     """
-    TODO:
-    :param scalar: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param value: TODO:
-    :param args: TODO:
-    :param kwargs: TODO:
-    :type scalar: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type value: TODO:
-    :type args: TODO:
-    :type kwargs: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of a scalar.
+    :param scalar: the GraphQLScalarType instance of the scalar
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type scalar: GraphQLScalarType
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
     """
+    # pylint: disable=unused-argument
     if value is None:
         return CoercionResult(value=None)
 
@@ -171,7 +174,7 @@ async def scalar_coercer(
                     )
                 ]
             )
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return CoercionResult(
             errors=[
                 coercion_error(
@@ -188,28 +191,24 @@ async def scalar_coercer(
 
 async def enum_coercer(
     enum: "GraphQLEnumType",
-    node: Optional["Node"],
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
     """
-    TODO:
-    :param enum: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param value: TODO:
-    :param args: TODO:
-    :param kwargs: TODO:
-    :type enum: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type value: TODO:
-    :type args: TODO:
-    :type kwargs: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of an enum.
+    :param enum: the GraphQLEnumType instance of the enum
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type enum: GraphQLEnumType
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
     """
     if value is None:
         return CoercionResult(value=None)
@@ -245,27 +244,30 @@ async def enum_coercer(
 async def input_object_coercer(
     input_object: "GraphQLInputObjectType",
     input_field_coercers: Dict[str, Callable],
-    node: Optional["Node"],
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
     """
-    TODO:
-    :param input_object: TODO:
-    :param input_field_coercers: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param value: TODO:
-    :type input_object: TODO:
-    :type input_field_coercers: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type value: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of an input object.
+    :param input_object: the GraphQLInputObjectType instance of the input
+    object
+    :param input_field_coercers: a dictionary of pre-computed coercer for each
+    fields
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type input_object: GraphQLInputObjectType
+    :type input_field_coercers: Dict[str, Callable]
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
     """
+    # pylint: disable=unused-argument,too-many-locals
     if value is None:
         return CoercionResult(value=None)
 
@@ -332,35 +334,34 @@ async def input_object_coercer(
 
 async def list_coercer(
     inner_coercer: Callable,
-    node: Optional["Node"],
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
     """
-    TODO:
-    :param inner_coercer: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param value: TODO:
-    :param args: TODO:
-    :param kwargs: TODO:
-    :type inner_coercer: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type value: TODO:
-    :type args: TODO:
-    :type kwargs: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of a list.
+    :param inner_coercer: the pre-computed coercer to use on each value in the
+    list
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type inner_coercer: Callable
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
     """
+    # pylint: disable=unused-argument,too-many-locals
     if value is None:
         return CoercionResult(value=None)
 
     if isinstance(value, Iterable):  # TODO: str are iterable so?...
         errors = []
         coerced_values = []
+        # TODO: maybe should we gather them?
         for index, item_value in enumerate(value):
             coerced_value, coerce_errors = await inner_coercer(
                 node, item_value, path=Path(path, index)
@@ -382,31 +383,29 @@ async def list_coercer(
 async def non_null_coercer(
     schema_type: "GraphQLType",
     inner_coercer: Callable,
-    node: Optional["Node"],
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
     """
-    TODO:
-    :param schema_type: TODO:
-    :param inner_coercer: TODO:
-    :param node: TODO:
-    :param path: TODO:
-    :param value: TODO:
-    :param args: TODO:
-    :param kwargs: TODO:
-    :type schema_type: TODO:
-    :type inner_coercer: TODO:
-    :type node: TODO:
-    :type path: TODO:
-    :type value: TODO:
-    :type args: TODO:
-    :type kwargs: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes the value of a list.
+    :param schema_type: the schema type of the expected value
+    :param inner_coercer: the pre-computed coercer to use on each value in the
+    list
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type schema_type: GraphQLType
+    :type inner_coercer: Callable
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
     """
+    # pylint: disable=unused-argument
     if value is None:
         return CoercionResult(
             errors=[
@@ -421,16 +420,29 @@ async def non_null_coercer(
 
 
 async def input_directive_coercer(
-    directives,
-    coercers,
-    # schema_type: "GraphQLType",
-    # inner_coercer: Callable,
-    node: Optional["Node"],
+    directives: Callable,
+    coercers: Callable,
+    node: "Node",
     value: Any,
     *args,
     path: Optional["Path"] = None,
     **kwargs,
 ) -> "CoercionResult":
+    """
+    Executes the directives on the coerced value.
+    :param directives: the directives to execute
+    :param coercers: the coercers to execute to get the coerced value
+    :param node: the AST node to treat
+    :param value: the raw value to compute
+    :param path: the path traveled until this coercer
+    :type directives: Callable
+    :type coercers: Callable
+    :type node: Node
+    :type value: Any
+    :type path: Optional[Path"]
+    :return: the coercion result
+    :rtype: CoercionResult
+    """
     result = await coercers(node, value, *args, path=path, **kwargs)
 
     if result is UNDEFINED_VALUE:
@@ -447,7 +459,7 @@ async def input_directive_coercer(
 
     try:
         return CoercionResult(value=await directives(value, *args, **kwargs))
-    except Exception as raw_exception:
+    except Exception as raw_exception:  # pylint: disable=broad-except
         return CoercionResult(
             errors=[
                 coercion_error(
@@ -474,13 +486,13 @@ def get_variable_definition_coercer(
     directives_definition: Optional[List[Dict[str, Any]]] = None,
 ) -> Callable:
     """
-    TODO:
-    :param schema_type: TODO:
-    :param directives_definition: TODO:
-    :type schema_type: TODO:
-    :type directives_definition: TODO:
-    :return: TODO:
-    :rtype: TODO:
+    Computes and returns the coercer to use for the filled in schema type.
+    :param schema_type: the schema type for which compute the coercer
+    :param directives_definition: the directives with which to wrap the coercer
+    :type schema_type: GraphQLType
+    :type directives_definition: Optional[List[Dict[str, Any]]]
+    :return: the computed coercer wrap with directives if defined
+    :rtype: Callable
     """
     wrapped_type = get_wrapped_type(schema_type)
 
@@ -520,7 +532,7 @@ def get_variable_definition_coercer(
             wrapper_coercers.append(partial(non_null_coercer, inner_type))
         inner_type = inner_type.wrapped_type
 
-    for wrapper_coercer in wrapper_coercers[::-1]:
+    for wrapper_coercer in reversed(wrapper_coercers):
         coercer = partial(wrapper_coercer, coercer)
 
     if directives_definition:

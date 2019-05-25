@@ -58,7 +58,7 @@ class GraphQLEnumValue:
 
     def bake(self, schema: "GraphQLSchema") -> None:
         self._schema = schema
-        self.directives_definition = get_directive_instances(
+        self.directives_definition = get_directive_instances(  # pylint: disable=attribute-defined-outside-init
             self._directives, self._schema
         )
         self._directives_implementations = {
@@ -123,21 +123,21 @@ class GraphQLEnumType(GraphQLType):
 
     def get_value(self, name: str) -> str:
         """
-        TODO:
-        :param name: TODO:
-        :type name: TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns the value of the enum value `name`.
+        :param name: the name of the enum value to fetch
+        :type name: str
+        :return: the value of the enum value `name`
+        :rtype: str
         """
         return self._value_map[name].value
 
     def get_enum_value(self, name: str) -> "GraphQLEnumValue":
         """
-        TODO:
-        :param name: TODO:
-        :type name: TODO:
-        :return: TODO:
-        :rtype: TODO:
+        Returns the GraphQLEnumValue instance of the enum value `name`.
+        :param name: the name of the enum value to fetch
+        :type name: str
+        :return: the GraphQLEnumValue instance of the enum value `name`
+        :rtype: GraphQLEnumValue
         """
         return self._value_map[name]
 
@@ -155,7 +155,7 @@ class GraphQLEnumType(GraphQLType):
 
     def bake(self, schema: "GraphQLSchema") -> None:
         super().bake(schema)
-        self.directives_definition = get_directive_instances(
+        self.directives_definition = get_directive_instances(  # pylint: disable=attribute-defined-outside-init
             self._directives, self._schema
         )
         self._directives_implementations = {

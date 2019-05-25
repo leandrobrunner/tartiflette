@@ -68,6 +68,7 @@ class _ResolverExecutor:
         execution_directives: Optional[List[Dict[str, Any]]],
         field_nodes: List["FieldNode"],
     ) -> (Any, Any):
+        # pylint: disable=too-many-locals
         from tartiflette.execution.values import get_argument_values
 
         try:
@@ -89,7 +90,7 @@ class _ResolverExecutor:
                             ),
                         }
                     )
-            except Exception:
+            except Exception:  # pylint: disable=broad-except
                 pass
 
             resolver = wraps_with_directives(
@@ -206,7 +207,9 @@ async def default_resolver(
     return None
 
 
-def default_error_coercer(exception: Exception, error: dict) -> dict:
+def default_error_coercer(
+    exception: Exception, error: Dict[str, Any]
+) -> Dict[str, Any]:
     # pylint: disable=unused-argument
     return error
 
